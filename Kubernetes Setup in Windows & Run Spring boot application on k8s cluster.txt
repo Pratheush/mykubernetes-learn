@@ -1,0 +1,1359 @@
+WORK IN POWERSHELL FOR KUBERNETES :::::::::::::::::::::::::::::::::::
+
+
+winget install -e --id Kubernetes.kubectl
+winget install minikube
+
+
+C:\Users\prath>minikube version
+W0407 01:51:53.943658    5464 main.go:291] Unable to resolve the current Docker CLI context "default": context "default": context not found: open C:\Users\prath\.docker\contexts\meta\37a8eec1ce19687d132fe29051dca629d164e2c4958ba141d5f4133a33f0688f\meta.json: The system cannot find the path specified.
+minikube version: v1.32.0
+commit: 8220a6eb95f0a4d75f7f2d7b14cef975f050512d
+
+
+
+If you have kubectl already installed and pointing to some other environment, such as minikube or a GKE cluster, be sure to change context so that kubectl is pointing to docker-desktop:
+
+kubectl config get-contexts
+
+kubectl config use-context docker-desktop
+
+
+
+update your active context of docker which Minikube will pick up.
+C:\Users\prath>docker context use default
+default
+Current context is now "default"
+
+
+Make Sure Docker is Up and Running.
+
+
+C:\Users\prath>minikube version
+minikube version: v1.32.0
+commit: 8220a6eb95f0a4d75f7f2d7b14cef975f050512d
+
+C:\Users\prath>minikube start --driver=docker
+😄  minikube v1.32.0 on Microsoft Windows 11 Home Single Language 10.0.22631.3374 Build 22631.3374
+✨  Using the docker driver based on existing profile
+👍  Starting control plane node minikube in cluster minikube
+🚜  Pulling base image ...
+🔄  Restarting existing docker container for "minikube" ...
+🐳  Preparing Kubernetes v1.28.3 on Docker 24.0.7 ...
+🔗  Configuring bridge CNI (Container Networking Interface) ...
+🔎  Verifying Kubernetes components...
+    ▪ Using image gcr.io/k8s-minikube/storage-provisioner:v5
+🌟  Enabled addons: storage-provisioner, default-storageclass
+🏄  Done! kubectl is now configured to use "minikube" cluster and "default" namespace by default
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> minikube profile list
+|----------|-----------|---------|--------------|------|---------|---------|-------|----------------|--------------------|
+| Profile  | VM Driver | Runtime |      IP      | Port | Version | Status  | Nodes | Active Profile | Active Kubecontext |
+|----------|-----------|---------|--------------|------|---------|---------|-------|----------------|--------------------|
+| minikube | docker    | docker  | 192.168.49.2 | 8443 | v1.30.0 | Running |     1 | *              | *                  |
+|----------|-----------|---------|--------------|------|---------|---------|-------|----------------|--------------------|
+
+
+
+C:\Users\prath>minikube status
+minikube
+type: Control Plane
+host: Running
+kubelet: Running
+apiserver: Running
+kubeconfig: Configured
+
+
+
+once we start minikube it will start a single node cluster to verify that whether it created cluster and single node or not
+
+
+
+C:\Users\prath>kubectl cluster-info
+Kubernetes control plane is running at https://127.0.0.1:52529
+CoreDNS is running at https://127.0.0.1:52529/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+
+
+
+C:\Users\prath>kubectl get node
+NAME       STATUS   ROLES           AGE   VERSION
+minikube   Ready    control-plane   13h   v1.28.3
+
+
+
+
+to read docker repository by kubernetes ::
+
+C:\Users\prath>docker images
+REPOSITORY                    TAG       IMAGE ID       CREATED         SIZE
+mongo                         latest    e325fe350a8c   3 months ago    757MB
+openzipkin/zipkin             latest    b3db5637af94   4 months ago    174MB
+kicbase/stable                v0.0.42   dbc648475405   5 months ago    1.2GB
+gcr.io/k8s-minikube/kicbase   <none>    dbc648475405   5 months ago    1.2GB
+testcontainers/ryuk           0.5.1     ec913eeff75a   10 months ago   12.7MB
+
+
+JAVA TECHIE TUTORIAL WAY OF DOING IT :::::::::::::::::::::::::::::::::::::::::::::::
+C:\Users\prath>minikube docker-env
+SET DOCKER_TLS_VERIFY=1
+SET DOCKER_HOST=tcp://127.0.0.1:52526
+SET DOCKER_CERT_PATH=C:\Users\prath\.minikube\certs
+SET MINIKUBE_ACTIVE_DOCKERD=minikube
+REM To point your shell to minikube's docker-daemon, run:
+REM @FOR /f "tokens=*" %i IN ('minikube -p minikube docker-env --shell cmd') DO @%i
+
+C:\Users\prath>@FOR /f "tokens=*" %i IN ('minikube -p minikube docker-env --shell cmd') DO @%i
+
+
+
+
+To point your shell to minikube's docker-daemon, run:
+minikube -p minikube docker-env --shell powershell | Invoke-Expression
+
+
+
+MY WAY OF DOING IT IN POWERSHELL::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+To configure your Windows 11 command prompt to use the Docker Engine inside Minikube, follow these steps:
+
+First, make sure you have Minikube installed and running.
+Open a PowerShell command prompt. (RunAs Administrator)
+Run the following commands:
+
+minikube docker-env
+minikube -p minikube docker-env | Invoke-Expression
+
+The first command provides instructions to point your terminal’s Docker CLI to the Docker Engine inside Minikube. The second command sets up the environment variables for Docker.
+your Docker environment is inside Kubernetes:
+
+
+
+
+
+
+
+The minikube docker-env command is used to set up your shell environment to use the Docker daemon inside the Minikube virtual machine. This allows you to run Docker commands like docker build, docker run, and docker ps as if you were running them on your local machine, but they actually operate on the Docker inside Minikube. It’s particularly useful when you want to build Docker images directly inside Minikube without pushing them from your local Docker registry
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> minikube docker-env | Invoke-Expression
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> minikube docker-env
+$Env:DOCKER_TLS_VERIFY = "1"
+$Env:DOCKER_HOST = "tcp://127.0.0.1:52526"
+$Env:DOCKER_CERT_PATH = "C:\Users\prath\.minikube\certs"
+$Env:MINIKUBE_ACTIVE_DOCKERD = "minikube"
+# To point your shell to minikube's docker-daemon, run:
+# & minikube -p minikube docker-env --shell powershell | Invoke-Expression
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> minikube docker-env | Invoke-Expression
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo>
+
+
+
+
+
+To point your shell to minikube's docker-daemon, run:
+minikube -p minikube docker-env --shell powershell | Invoke-Expression
+
+
+
+
+docker build -t deepak/app -f Dockerfile.app .
+The -t flag assigns a tag to your image, allowing you to give it a name and version
+
+docker build -t <image_name>:<tag> .
+
+Replace <image_name> with the desired name for your image.
+Replace <tag> with an optional version or label for your image.
+The dot (.) at the end specifies the current directory as the build context.
+
+Notice there is a dot . at the end of both commands.
+
+docker build -f MyDockerfile .
+Or with a tag:
+
+docker build -t mysuperimage -f MyDockerfile .
+
+
+
+to set up your shell environment to use the Docker daemon inside the Minikube virtual machine. This allows you to run Docker commands like docker build, docker run, and docker ps as if you were running them on your local machine, but they actually operate on the Docker inside Minikube
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> minikube docker-env
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> & minikube -p minikube docker-env --shell powershell | Invoke-Expression
+
+
+
+mvn package
+
+to just build your jar
+
+mvn install
+
+to install it in your local Maven repository
+
+mvn clean
+
+to remove a previous build
+
+
+
+
+Dockerfile:::::::::::::::::::::::::::::::::::::::::::
+
+FROM eclipse-temurin:21-jre-alpine AS builder
+COPY ./target/springboot-hello-k8s-demo-0.0.1-SNAPSHOT.jar springboot-hello-k8.jar
+ENTRYPOINT ["java" , "-jar" , "/springboot-hello-k8.jar"]
+
+
+
+
+HERE DOCKER IMAGE springboot-hello-k8:3.0 IS EXACTLY SAME AS MENTIONED IN Dockerfile
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> docker build -t springboot-hello-k8:3.0 -f Dockerfile .
+[+] Building 56.8s (7/7) FINISHED                                                                                                         docker:default
+ => [internal] load build definition from Dockerfile                                                                                                0.0s
+ => => transferring dockerfile: 1.67kB                                                                                                              0.0s
+ => [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine                                                                    4.7s
+ => [internal] load .dockerignore                                                                                                                   0.0s
+ => => transferring context: 2B                                                                                                                     0.0s
+ => [internal] load build context                                                                                                                   0.2s
+ => => transferring context: 22.28MB                                                                                                                0.2s
+ => [1/2] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:23467b3e42617ca197f43f58bc5fb03ca4cb059d68acd49c67128bfded132d67             51.8s
+ => => resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:23467b3e42617ca197f43f58bc5fb03ca4cb059d68acd49c67128bfded132d67              0.0s
+ => => sha256:23467b3e42617ca197f43f58bc5fb03ca4cb059d68acd49c67128bfded132d67 549B / 549B                                                          0.0s
+ => => sha256:3c40389d278c7129d9032c5f3ce68fb150c2869b5e107ea801b150a2ae653253 1.36kB / 1.36kB                                                      0.0s
+ => => sha256:56151fa8cd77cc5bdaa38b2d08422188fc196b52760442e4ffb7e2b08239fa6a 3.64kB / 3.64kB                                                      0.0s
+ => => sha256:4abcf20661432fb2d719aaf90656f55c287f8ca915dc1c92ec14ff61e67fbaf8 3.41MB / 3.41MB                                                     16.5s
+ => => sha256:a21a63612cbe8d148f75173be90696fbe03e2a6e9c901e2c039bcf1bcdeec0b9 8.54MB / 8.54MB                                                     12.7s
+ => => sha256:30cfa311aac8a3392db2ebb73aaef9a5ce6f4f86a8e67f662b26b88369bfe768 53.64MB / 53.64MB                                                   50.8s
+ => => sha256:f39cfbe71648d09f5c57a136ef3618197e81f0fe6c88079d71ec2eb2fcfb4ebe 171B / 171B                                                         13.1s
+ => => sha256:a39c557e2e95347145be8ef8d7b56adae7102c55e7240c67ce98ba28017b8ea6 717B / 717B                                                         13.5s
+ => => extracting sha256:4abcf20661432fb2d719aaf90656f55c287f8ca915dc1c92ec14ff61e67fbaf8                                                           0.1s
+ => => extracting sha256:a21a63612cbe8d148f75173be90696fbe03e2a6e9c901e2c039bcf1bcdeec0b9                                                           0.3s
+ => => extracting sha256:30cfa311aac8a3392db2ebb73aaef9a5ce6f4f86a8e67f662b26b88369bfe768                                                           0.8s
+ => => extracting sha256:f39cfbe71648d09f5c57a136ef3618197e81f0fe6c88079d71ec2eb2fcfb4ebe                                                           0.0s
+ => => extracting sha256:a39c557e2e95347145be8ef8d7b56adae7102c55e7240c67ce98ba28017b8ea6                                                           0.0s
+ => [2/2] COPY ./target/springboot-hello-k8s-demo-0.0.1-SNAPSHOT.jar springboot-hello-k8.jar                                                        0.1s
+ => exporting to image                                                                                                                              0.1s
+ => => exporting layers                                                                                                                             0.0s
+ => => writing image sha256:1327167c67e2b751c546ea1fad7d2ab93c60830a87f193541791ecc7000648f2                                                        0.0s
+ => => naming to docker.io/library/springboot-hello-k8:3.0                                                                                          0.0s
+
+View build details: docker-desktop://dashboard/build/default/default/yj3q2gvn3baw1z0hjoigurc91
+
+What's Next?
+  1. Sign in to your Docker account → docker login
+  2. View a summary of image vulnerabilities and recommendations → docker scout quickview
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> docker images
+REPOSITORY                                TAG        IMAGE ID       CREATED         SIZE
+springboot-hello-k8                       3.0        1327167c67e2   7 seconds ago   212MB
+registry.k8s.io/kube-apiserver            v1.30.0    c42f13656d0b   2 weeks ago     117MB
+registry.k8s.io/kube-scheduler            v1.30.0    259c8277fcbb   2 weeks ago     62MB
+registry.k8s.io/kube-controller-manager   v1.30.0    c7aad43836fa   2 weeks ago     111MB
+registry.k8s.io/kube-proxy                v1.30.0    a0bf559e280c   2 weeks ago     84.7MB
+registry.k8s.io/etcd                      3.5.12-0   3861cfcd7c04   2 months ago    149MB
+registry.k8s.io/coredns/coredns           v1.11.1    cbb01a7bd410   8 months ago    59.8MB
+registry.k8s.io/pause                     3.9        e6f181688397   18 months ago   744kB
+gcr.io/k8s-minikube/storage-provisioner   v5         6e38f40d628d   3 years ago     31.5MB
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo>
+
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> docker images
+REPOSITORY                                TAG             IMAGE ID       CREATED          SIZE
+springboot-k8s                            1.0             ba68768596c6   15 seconds ago   212MB
+eclipse-temurin                           21-jre-alpine   d3e9b76faa33   10 days ago      189MB
+registry.k8s.io/kube-apiserver            v1.28.3         537434729123   5 months ago     126MB
+registry.k8s.io/kube-scheduler            v1.28.3         6d1b4fd1b182   5 months ago     60.1MB
+registry.k8s.io/kube-controller-manager   v1.28.3         10baa1ca1706   5 months ago     122MB
+registry.k8s.io/kube-proxy                v1.28.3         bfc896cf80fb   5 months ago     73.1MB
+registry.k8s.io/etcd                      3.5.9-0         73deb9a3f702   10 months ago    294MB
+registry.k8s.io/coredns/coredns           v1.10.1         ead0a4a53df8   14 months ago    53.6MB
+registry.k8s.io/pause                     3.9             e6f181688397   18 months ago    744kB
+gcr.io/k8s-minikube/storage-provisioner   v5              6e38f40d628d   3 years ago      31.5MB
+
+BELOW ARE THE MASTER NODE COMPONENTS ::::
+registry.k8s.io/kube-apiserver            v1.28.3         537434729123   5 months ago    126MB
+registry.k8s.io/kube-scheduler            v1.28.3         6d1b4fd1b182   5 months ago    60.1MB
+registry.k8s.io/kube-controller-manager   v1.28.3         10baa1ca1706   5 months ago    122MB
+registry.k8s.io/kube-proxy                v1.28.3         bfc896cf80fb   5 months ago    73.1MB
+
+
+
+
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> docker images
+REPOSITORY                                TAG        IMAGE ID       CREATED          SIZE
+springboot-k8s                            2.0        013c0b41d48b   16 seconds ago   212MB
+registry.k8s.io/kube-apiserver            v1.30.0    c42f13656d0b   2 weeks ago      117MB
+registry.k8s.io/kube-controller-manager   v1.30.0    c7aad43836fa   2 weeks ago      111MB
+registry.k8s.io/kube-scheduler            v1.30.0    259c8277fcbb   2 weeks ago      62MB
+registry.k8s.io/kube-proxy                v1.30.0    a0bf559e280c   2 weeks ago      84.7MB
+registry.k8s.io/etcd                      3.5.12-0   3861cfcd7c04   2 months ago     149MB
+registry.k8s.io/coredns/coredns           v1.11.1    cbb01a7bd410   8 months ago     59.8MB
+registry.k8s.io/pause                     3.9        e6f181688397   18 months ago    744kB
+gcr.io/k8s-minikube/storage-provisioner   v5         6e38f40d628d   3 years ago      31.5MB
+
+
+
+
+
+
+
+
+==========================================================================================================================================================
+
+
+to run the image springboot-hello-k8s-demo inside the pod for that we need to create a deployment object 
+deployment are kubernetes object that are used for managing the pods . we can describe deployment detail using yml file or we can use command prompt
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl create deployment springboot-k8s --image=springboot-k8s:1.0 --port=9091
+deployment.apps/springboot-k8s created
+
+here we are telling create a deployment with name springboot-hello-k8s and read the docker image springboot-hello-k8s-demo:1.0 and run this inside a pod
+
+
+
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get pods
+NAME                              READY   STATUS    RESTARTS   AGE
+springboot-k8s-5dccd44588-g6vbz   1/1     Running   0          8s
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get deployments
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE
+springboot-k8s   1/1     1            1           51m
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl describe deployment springboot-k8s
+Name:                   springboot-k8s
+Namespace:              default
+CreationTimestamp:      Sun, 07 Apr 2024 14:10:21 +0530
+Labels:                 app=springboot-k8s
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=springboot-k8s
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=springboot-k8s
+  Containers:
+   springboot-k8s:
+    Image:        springboot-k8s:1.0
+    Port:         9091/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   springboot-k8s-5dccd44588 (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  51m   deployment-controller  Scaled up replica set springboot-k8s-5dccd44588 to 1
+
+
+
+
+
+
+means the docker image we created kubernetes is able to pull the image 
+when we create the deployment object and it created a pod and inside a pod it
+just started a single container and it just execute your particular image
+to verify that we can check the log of this particular file >>>
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl logs springboot-k8s-5dccd44588-g6vbz
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.4)
+
+2024-04-07T08:40:22.154Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] c.m.s.SpringBootHelloK8sDemoApplication  : Starting SpringBootHelloK8sDemoApplication v0.0.1-SNAPSHOT using Java 21.0.2 with PID 1 (/application/BOOT-INF/classes started by root in /application)
+2024-04-07T08:40:22.157Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] c.m.s.SpringBootHelloK8sDemoApplication  : The following 1 profile is active: "prod"
+2024-04-07T08:40:24.314Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 9091 (http)
+2024-04-07T08:40:24.324Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2024-04-07T08:40:24.325Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.19]
+2024-04-07T08:40:24.352Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2024-04-07T08:40:24.353Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2016 ms
+2024-04-07T08:40:25.727Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint(s) beneath base path '/actuator'
+2024-04-07T08:40:26.046Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 9091 (http) with context path ''
+2024-04-07T08:40:26.121Z  INFO 1 --- [SpringBootHello-k8s-demo] [           main] c.m.s.SpringBootHelloK8sDemoApplication  : Started SpringBootHelloK8sDemoApplication in 4.325 seconds (process running for 4.587)
+
+
+
+
+---------------------------------------------------------------------------------------
+
+now our springboot application is running inside pod container 
+
+
+now we should have any option to access the particular url
+for that we need to create a service object and to create a service object 
+we need to expose the current deployment with specific service tag(specific service type) so that application can be accessed outside the cluster
+
+#  Create a Namespace:
+#  kubectl create ns lbservice
+#  Deploy a Redis Pod:
+#  kubectl create deploy redis --image=redis:alpine -n lbservice
+#  Verify the Pod:
+#  kubectl get pods -n lbservice
+
+#  kubectl expose deploy redis --port 6379 --type LoadBalancer -n lbservice
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl expose deployment springboot-k8s --type=NodePort
+service/springboot-k8s exposed
+
+# earlier before creating deployment and expose service ::::::::::::::::::::::::
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get svc
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   12m
+
+
+# after creating deployment and expose service ::::::::::::::::::::::::::::::::::::
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get service
+NAME             TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)          AGE
+kubernetes       ClusterIP   10.96.0.1     <none>        443/TCP          26h
+springboot-k8s   NodePort    10.100.4.85   <none>        9091:30910/TCP   35s
+
+
+
+
+kubectl get service
+
+role of this service with type NodePort is all the traffic will come to 
+the service first then service will redirect your request to the corresponding pods based on availability . since we have only one pod
+we can directly get the service url to access the particular endpoint
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> minikube service springboot-k8s --url
+http://127.0.0.1:57707
+❗  Because you are using a Docker driver on windows, the terminal needs to be open to run it.
+
+
+we will get the service url or proxy url to access the endpoint
+
+
+=-----------------------------------------------------------------------------------------------------------
+
+to check the health of each component pod, node of kubernetes we can use minikube dashboard
+minikube dashboard
+
+minikube dashboard is the user-interface where we can see all the node and status like all the component and status
+copy the minkube dashboard generated url and paste it to browser 
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> minikube dashboard
+🔌  Enabling dashboard ...
+    ▪ Using image docker.io/kubernetesui/metrics-scraper:v1.0.8
+    ▪ Using image docker.io/kubernetesui/dashboard:v2.7.0
+💡  Some dashboard features require the metrics-server addon. To enable all features please run:
+
+        minikube addons enable metrics-server
+
+
+🤔  Verifying dashboard health ...
+🚀  Launching proxy ...
+🤔  Verifying proxy health ...
+🎉  Opening http://127.0.0.1:57784/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/ in your default browser...
+
+
+
+
+
+
+
+in kubernetes there is a concept called self-healing it means if i delete a pod then immediately it will start a new pod 
+it means it just started a new pod with new IP-Address
+
+--------------------------------------------------------------------------------------------------------------
+
+delete the deployment and everything :::
+kubectl delete service springboot-hello-k8s
+kubectl delete deployment springboot-hello-k8s
+
+to verify pods and service after deletion:::
+kubectl get pods
+kubectl get svc
+kubectl get deployments
+
+
+this will stop the minikube and this will stop local kubernetes cluster
+minikube stop
+
+to verify nodes::::
+kubectl get nodes
+
+
+it will delete local kubernetes cluster
+minikube delete
+
+
+
+
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get svc
+NAME             TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)          AGE
+kubernetes       ClusterIP   10.96.0.1     <none>        443/TCP          27h
+springboot-k8s   NodePort    10.100.4.85   <none>        9091:30910/TCP   67m
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl delete service springboot-k8s
+service "springboot-k8s" deleted
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get deployments
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE
+springboot-k8s   1/1     1            1           127m
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl delete deployment springboot-k8s
+deployment.apps "springboot-k8s" deleted
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get pods
+No resources found in default namespace.
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get svc
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   28h
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get deployments
+No resources found in default namespace.
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> minikube stop
+✋  Stopping node "minikube"  ...
+🛑  Powering off "minikube" via SSH ...
+🛑  1 node stopped.
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> docker images
+error during connect: Get "https://127.0.0.1:52526/v1.24/images/json": dial tcp 127.0.0.1:52526: connectex: No connection could be made because the target machine actively refused it.
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo>
+
+
+
+
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> minikube delete
+🔥  Deleting "minikube" in docker ...
+🔥  Deleting container "minikube" ...
+🔥  Removing C:\Users\prath\.minikube\machines\minikube ...
+💀  Removed all traces of the "minikube" cluster.
+
+
+
+
+============================================================================================================================================================================
+FOR FINDING ERROR OR OBSERVATION TO FIND FAULTS :::::::::::::
+
+
+You can check the availability of your nodes with the following command:
+
+kubectl get nodes -o wide
+
+
+
+As you can see zero of three Pods have Ready status:
+
+NAME   READY   AVAILABLE
+back   0/3     0 
+To find out what is going on you should check the underlying Pods:
+
+$ kubectl get pods -l app=back
+and then look at the Events in their description:
+
+
+# I RAN THIS COMMAND TO FIND FAULT WHEN IT WAS GIVING 0/1 IN READY STATUS IT GAVE ME ERROR AND WHERE IT IS FAILING 
+$ kubectl describe pod back-...
+
+
+
+
+
+
+The issue arises when the image is not present on the cluster and k8s engine is going to pull the respective registry. k8s Engine enables 3 types of ImagePullPolicy mentioned :
+
+Always : It always pull the image in container irrespective of changes in the image
+Never : It will never pull the new image on the container
+IfNotPresent : It will pull the new image in cluster if the image is not present.
+Best Practices : It is always recommended to tag the new image in both docker file as well as k8s deployment file. So That it can pull the new image in container.
+
+=================================================================================================================================================================================
+
+
+ERROR THAT HAPPENED WHEN I WAS PRACTICING AND IT DID NOT CREATED DEPLOYMENT AND STARTED WITH READY STATUS :::::: CHECK READY STATUS ::: 0/1 i.e O is ready and available
+
+#### DEPLOYMENT CREATED :::::
+C:\Users\prath>kubectl create deployment springboot-hello-k8s --image=springboot-hello-k8s-demo:1.0 --port=9091
+deployment.apps/springboot-hello-k8s created
+
+# SEE IN READY 0 READY OUT OF 1 
+C:\Users\prath>kubectl get deployments
+NAME                   READY   UP-TO-DATE   AVAILABLE   AGE
+springboot-hello-k8s   0/1     1            0           71s
+
+
+
+
+
+C:\Users\prath>kubectl describe deployment springboot-hello-k8s
+Name:                   springboot-hello-k8s
+Namespace:              default
+CreationTimestamp:      Sun, 07 Apr 2024 09:43:17 +0530
+Labels:                 app=springboot-hello-k8s
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=springboot-hello-k8s
+Replicas:               1 desired | 1 updated | 1 total | 0 available | 1 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=springboot-hello-k8s
+  Containers:
+   springboot-hello-k8s-demo:
+    Image:        springboot-hello-k8s-demo:1.0
+    Port:         9091/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      False   MinimumReplicasUnavailable
+  Progressing    True    ReplicaSetUpdated
+OldReplicaSets:  <none>
+NewReplicaSet:   springboot-hello-k8s-75b4cb68fc (1/1 replicas created)
+Events:
+  Type    Reason             Age    From                   Message
+  ----    ------             ----   ----                   -------
+  Normal  ScalingReplicaSet  2m39s  deployment-controller  Scaled up replica set springboot-hello-k8s-75b4cb68fc to 1
+
+
+
+C:\Users\prath>kubectl get pods
+NAME                                    READY   STATUS             RESTARTS   AGE
+springboot-hello-k8s-75b4cb68fc-zz6kd   0/1     ImagePullBackOff   0          3m51s
+
+=========================================================================================================================================================================================
+
+
+Dockerfile :::::::::::::::::::::::::::::::::::::
+
+#bad practice for dockerized use JDK
+#FROM openjdk:17-jdk-slim
+#COPY target/springBootDockerized-0.0.1-SNAPSHOT.jar springBootDockerized-0.0.1-SNAPSHOT.jar
+#ENTRYPOINT ["java" , "-jar" , "/springBootDockerized-0.0.1-SNAPSHOT.jar"]
+
+## alpine linux with JRE
+FROM eclipse-temurin:21-jre-alpine AS builder
+WORKDIR extracted
+ADD ./target/springboot-hello-k8s-demo.jar springboot-hello-k8s-demo.jar
+RUN java -Djarmode=layertools -jar springboot-hello-k8s-demo.jar extract
+
+FROM eclipse-temurin:21-jre-alpine
+ENV SPRING_PROFILES_ACTIVE=prod
+LABEL maintainer="Pratheush Raj <pratheush@outlook.com>"
+LABEL version="1.0"
+LABEL description="SpringBootHello-k8s-demo"
+WORKDIR application
+COPY --from=builder extracted/dependencies/ ./
+COPY --from=builder extracted/spring-boot-loader/ ./
+COPY --from=builder extracted/snapshot-dependencies/ ./
+COPY --from=builder extracted/application/ ./
+
+EXPOSE 9091
+
+HEALTHCHECK --interval=5s \
+            --timeout=3s \
+            --retries=3 \
+            CMD curl -f http://localhost:9091/actuator/health || exit 1
+
+#use it before springboot 3.2
+#ENTRYPOINT ["java" , "org.springframework.boot.loader.JarLauncher"]
+#use it for after springboot 3.2
+ENTRYPOINT ["java" , "org.springframework.boot.loader.launch.JarLauncher"]
+
+
+
+
+FROM eclipse-temurin:21-jre-alpine
+EXPOSE 8080
+ADD ./target/springboot-hello-k8s-demo.jar springboot-hello-k8s-demo.jar
+ENTRYPOINT ["java","-jar","/springboot-hello-k8s-demo.jar"]
+
+
+#ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+
+#This command will start the Spring Boot application using the JarLauncher class, which is responsible for launching a Spring Boot fat jar. This is particularly useful when you want to #create a Docker image for your Spring Boot application.
+
+#FROM
+ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher"]
+
+#TO
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+
+
+=======================================================================================================================================================
+=======================================================================================================================================================
+
+Error I am getting ::::::::::::::::
+
+PS C:\Users\prath> kubectl get pods
+E0502 14:20:47.628787    2336 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+E0502 14:20:47.629291    2336 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+E0502 14:20:47.645501    2336 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+E0502 14:20:47.645501    2336 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+E0502 14:20:47.660444    2336 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+Unable to connect to the server: dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+PS C:\Users\prath> kubectl get svc
+E0502 14:21:01.431240   27692 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+E0502 14:21:01.431240   27692 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+E0502 14:21:01.439801   27692 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+E0502 14:21:01.439801   27692 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+E0502 14:21:01.455270   27692 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+Unable to connect to the server: dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+
+
+
+kubectl get pods Unable to connect to the server: dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it
+
+
+
+If you have kubectl already installed and pointing to some other environment, such as minikube or a GKE cluster, be sure to change context so that kubectl is pointing to docker-desktop:
+
+kubectl config get-contexts
+
+kubectl config use-context docker-desktop
+
+=====================================================================================================================================================================================
+
+When a Kubernetes container repeatedly fails to start, it enters a ‘CrashLoopBackOff’ state, indicating a persistent restart loop within a pod.
+
+Common causes include insufficient memory or resource overload, deployment errors, third-party service issues like DNS errors, missing dependencies, or container failures due to port conflicts. 
+
+Common Causes of CrashLoopBackOff and How to Fix Them
+“CrashLoopBackOff” can occur when a pod fails to start for some reason, because a container fails to start up properly and repeatedly crashes. 
+
+By default, a pod’s restart policy is Always, meaning it should always restart on failure (other options are Never or OnFailure).
+
+ When a Pod state is displaying CrashLoopBackOff, it means that it’s currently waiting the indicated time before restarting the pod again. 
+
+Every time the pod is restarted, Kubernetes waits for a longer and longer time, known as a “backoff delay”. The delay between restarts is exponential (10s, 20s, 40s, …) and is capped at five minutes. During this process, Kubernetes displays the CrashLoopBackOff error.
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl create deployment springboot-k8s --image=springboot-k8s:2.0 --port=9091
+deployment.apps/springboot-k8s created
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get pod
+NAME                              READY   STATUS             RESTARTS      AGE
+springboot-k8s-75956bd468-5nd9b   0/1     CrashLoopBackOff   2 (22s ago)   37s
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get pod
+NAME                              READY   STATUS   RESTARTS      AGE
+springboot-k8s-75956bd468-5nd9b   0/1     Error    3 (30s ago)   45s
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get deployments
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE
+springboot-k8s   0/1     1            0           7m7s
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get pods
+NAME                              READY   STATUS             RESTARTS      AGE
+springboot-k8s-75956bd468-5nd9b   0/1     CrashLoopBackOff   6 (87s ago)   7m12s
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get pods
+NAME                              READY   STATUS             RESTARTS      AGE
+springboot-k8s-75956bd468-5nd9b   0/1     CrashLoopBackOff   8 (87s ago)   17m
+
+NAME                             READY   STATUS             RESTARTS   AGE
+multiplication-b47499db9-phpb7   0/1     ImagePullBackOff   0          23h
+my-first-pod                     0/1     ErrImagePull       0          7s
+
+
+to troubleshoot and resolve the CrashLoopBackOff error:
+Check Pod Status: Run kubectl get pods to confirm that the pod status is indeed CrashLoopBackOff
+
+Review Pod Logs: Use kubectl logs <pod-name> to inspect the logs of the crashing container. This can provide insights into why the container is failing to start.
+Resource Limits: Ensure that the pod has sufficient memory and CPU resources. Insufficient resources can cause the application to crash.
+Image Issues: Verify that the image springboot-k8s:2.0 is correct and that it can be pulled from your container registry.
+Port Conflicts: Check for any port conflicts. 
+Application Errors: If it’s an application error, update your application, rebuild the container image, and then try redeploying it.
+Kubernetes Events: Run kubectl describe pod <pod-name> to get more detailed events and messages related to the pod’s lifecycle.
+
+
+#Show details of specific pod
+kubectl  describe pod <pod name> -n <namespace-name>
+
+kubectl describe pod <pod-name>
+
+# View logs for specific pod
+kubectl  logs <pod name> -n <namespace-name>
+
+Use kubectl logs <pod-name>
+
+
+PS D:\jlab\IdeaWorkSpace2023\springboot-hello-k8s-demo> kubectl get pods -o wide
+NAME                                   READY   STATUS    RESTARTS   AGE    IP           NODE       NOMINATED NODE   READINESS GATES
+springboot-hello-k8-5cb5d7578b-jg2v7   1/1     Running   0          136m   10.244.0.6   minikube   <none>           <none>
+
+# Check Logs From Previous Container Instance
+kubectl logs --previous --tail 10
+
+# Check Deployment Logs
+# Run the following command to retrieve the kubectl deployment logs:
+kubectl logs -f deploy/ -n
+
+
+============================================================================================================================================================================
+===========================================================================================================================================================================
+
+Remove the image from Minikube using the minikube image rm command:
+minikube image rm <image-name>
+
+If you want to remove all unused Docker images, you can use the Docker prune command:
+docker image prune -a
+This will remove all images without at least one container associated with them.
+
+Remove all stopped containers :
+docker container rm $(docker ps -a -q)
+
+For untagged images, you can remove them with the following command:
+docker image rm $(docker images | grep "^<none>" | awk "{print $3}")
+
+To stop and disable the localkube service (if you’re using it), which will allow you to remove containers, use:
+systemctl disable localkube.service
+systemctl stop localkube.service
+
+
+After that you're able to stop and remove containers.  which removes all the images
+docker system prune -a
+
+
+============================================================================================================================================================================
+===========================================================================================================================================================================
+
+Since you are using an image without uploading it .You will have to set the imagePullPolicy to Never, otherwise Kubernetes will try to download the image.
+
+Start minikube
+minikube start
+
+Set docker env
+eval $(minikube docker-env)
+
+Build image
+docker build -t my-first-image:3.0.0 .
+
+Run in minikube
+kubectl run my-first-container --image=my-first-image:3.0.0 --image-pull-policy=Never
+
+Check that it's running
+kubectl get pods
+
+Your pod spec should be like below
+
+pods.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+ name: my-first-pod
+spec:
+ containers:
+ - name: my-first-container
+   image: my-first-image:3.0.0
+   imagePullPolicy: Never
+
+============================================================================================================================================================================
+===========================================================================================================================================================================
+
+
+Deploy Spring Boot App To k8s using YAML ::::::::::::::::::::::
+
+
+By creating this Deployment YAML file which is industry standard we are telling to Kubernetes to create an Instance of my SpringBoot Application
+in Kubernetes cluster. Or we are telling to just create a image  in Kubernetes POD and just run it inside containers.
+
+This selector and label should be same in deployment and service both deployment and service yaml fil::::::
+
+
+
+k8-deployment.yaml :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+apiVersion: apps/v1
+kind: Deployment # Kubernetes resource kind we are creating
+metadata:
+  name: spring-boot-k8s
+spec:
+  selector:
+    matchLabels:
+      app: spring-boot-k8s
+  replicas: 2 # Number of replicas that will be created for this deployment
+  template:
+    metadata:
+      labels:
+        app: spring-boot-k8s
+    spec:
+      containers:
+        - name: spring-boot-k8s
+          image: springboot-k8s-example:1.0 # Image that will be used to containers in the cluster
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080 # The port that the container is running on in the cluster
+
+
+
+kubectl apply -f k8-deployment.yaml
+
+assume there are three instances running of our spring-boot application i.e. three pods are running since in deployment.yaml file we set replica value to 3.
+
+to consume springboot application  if i send request to access springboot application where does this request will land first pod or second pod or third pod we don't know
+and how Kubernetes will know where to send the request. since there is 3 different instances running to solve this we use Service.
+
+in Kubernetes service plays service discovery where it exposes our application to outside world ,as well as service act as a load-balancer where it decides which pod
+should handle request . if user send request to the application since there is three instances is running Kubernetes service will decide to whom it will send the request
+ based on the load availability. 
+
+
+
+k8-service.yaml::::::::::::::::::::::::::::::::::
+
+apiVersion: v1 # Kubernetes API version
+kind: Service # Kubernetes resource kind we are creating
+metadata: # Metadata of the resource kind we are creating
+  name: springboot-k8s-svc
+spec:
+  selector:
+    app: spring-boot-k8sf	# this name should be same as in k8-deployment.yaml above
+  ports:
+    - protocol: "TCP"
+      port: 8080 # The port that the service is running on in the cluster
+      targetPort: 8080 # The port exposed by the service
+  type: NodePort # type of the service.
+
+
+ type of the service:::::
+NodePort
+ClusterIp
+LoadBalancer
+
+kubectl apply -f k8-service.yaml
+
+to access api or our spring-boot application:::
+http://{nodeIp}:{port}/{API URL}
+
+
+minikube ip
+
+minikube dashboard
+
+
+
+........................................................
+
+start docker service
+
+minikube start driver=docker / minikube start
+minikube status
+minikube docker-env
+docker build -t springboot-hello-k8:4.0 -f Dockerfile . 
+docker images
+kubectl apply -f k8-deployment.yaml
+kubectl get deployments
+kubectl get pods
+kubectl logs <pod1-name>
+kubectl logs <pod2-name>
+kubectl logs <pod3-name>
+kubectl apply -f k8-service.yaml	# creating service object exposing springboot application running inside container of Kubernetes of pod to outside Kubernetes cluster 
+kubectl get service
+kubectl get svc		# this command will give port
+kubectl get nodes -o wide # this command will give ip of node .... with the help of ip and port we can access the endpoints of our spring-boot application running inside a container in pod
+
+to access api or our spring-boot application:::
+http://{nodeIp}:{port}/{API URL}
+
+minikube ip
+minikube dashboard
+
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+integrating MySQL-database so we need to run database instance in different pods inside Kubernetes cluster 
+
+and we need to create deployment object and service object for our database just like we did for our application using yaml configuration file.
+
+
+http POST http://localhost:8383/orders name=bike qty=1 price:=90000
+http POST http://localhost:8383/orders name=watch qty=2 price:=14499
+http POST http://localhost:8383/orders name=bag qty=5 price:=3000
+
+http GET http://localhost:8383/orders
+
+http GET http://localhost:8383/orders/1
+
+http PUT http://localhost:9191/update id=6 name=bike quantity=1 price:=190000
+
+HTTP URL : http DELETE http://localhost:9191/delete/6
+
+
+...........................................................................................................
+
+Kubernetes YAML Configuration :::::::
+
+apiVersion: which api-version we are using for a particular component. there are different components available in Kubernetes api
+kind : what is the kind of the component : Deployment, Service, ReplicaSet
+metadata
+specification: spec
+status
+
+metadata : metadata defines the data about the particular component
+	   like we can define name of the component, we can define multiple-labels for the 	   component
+
+specification: spec: what is the specification for the particular component.
+		     all the components have different specification and spec has all the
+		     specification related to that particular component.
+			every component will be having different specification.
+
+			deployment has different set of attributes in a specification
+			service has different set of attributes in a specification
+
+ status: we don't define status when we create the configuration files
+when we pass the configuration to the Kubernetes API-server 
+status is created by the Kubernetes.
+
+whenever we define the specification for any of the component 
+we give the desired behavior we want. Kubernetes stores the information on ETCD Server(ETCD key-store)
+  based on the specification provided we need to create the components described.
+
+
+Deployment::::
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+   name: myapp-deploy
+   labels:				# this labels will define our entire application. we can use these labels for selecting particular compnents
+      app: myapp
+spec:
+   replicas: 1			# i need 1 replica of the pod for the containers that we are passing in our deployment 
+   selector:			# what should i select to create the replica for that i have given matchlabels . i should match the selector with the labels that i am providing.
+      matchLabels:
+         app: myapp
+   template:
+      metadata:
+         labels:
+            app: myapp
+      spec:
+         containers:
+            - name: myapp-pod
+              image: dailycodebuffer/dockerpublish:0.0.3
+              ports:
+                 - containerPort: 9091
+
+# what should i select to create the replica for that i have given matchlabels . i should match the selector with the labels that i am providing.
+the label it should match is app myapp so this is the same label that we have provided in our template metadata labels app myapp
+
+
+creating service exposing endpoints to the end users to as a service.
+Service :::::::::::
+
+apiVersion: v1
+kind: Service
+metadata:
+   name: myapp-svc
+spec:
+   type: NodePort
+   ports:
+      - port: 9092		# # The port that the service is running on in the cluster
+        targetPort: 9091	# The port exposed by the service
+        protocol: TCP
+   selector:
+      app: myapp
+
+
+myapplication should be connected to 9091 port of which application that i have given as selector. 
+the number of the replicas that we have created with the name myapp as labels all will be connected to  this particular service. 
+all those pods will be accessed using service endpoint using the port 9092
+and internally it will be having a load balancer that will load balance all the requests to port 9091 of all the replicas that we have.
+
+kubectl apply -f ./kubernetes-deploy.yml
+
+kubectl get svc
+kubectl get deployments
+kubectl describe service myapp-svc  ## through this command we can verify the desired port is assigned or not. it will give Endpoints attribute . this would be endpoint ip-address for the 					pod
+
+kubectl  get pods
+kubectl get pods -o wide # i want all the information through -o and wide attribute. and this will give ip address which is running on port 9091 which is connected to Ip-address and port 
+
+kubectl get deployment -o yaml # gives us entire configuration yaml file of different components for this particular deployment. we can also see the status of the particular component.
+
+minikube service myapp-svc.
+
+
+
+
+
+apiVersion: extension/v1beta1
+kind: Deployment
+metadata:
+   name: nginx-deployment
+spec:
+   revisionHistoryLimit: 5
+   minReadySeconds: 10
+   selector:
+      matchLabels:
+         app: nginx
+         deployer: distelli
+   strategy:
+      type: RollingUpdate
+      rollingUpdate:
+         maxUnavailable: 1
+         maxSurge: 1
+      replicas: 3
+      template:
+         metadata:
+            labels:
+               app: nginx
+               deployer: distelli
+         spec:
+            containers:
+               - name: nginx
+                 image: nginx:1.7.9
+
+
+
+
+Here's a brief explanation of the various fields:
+
+replicas — Tells Kubernetes how many pods to create during a deployment. Modifying this field is an easy way to scale a containerized application.
+
+spec.strategy.type — Suppose there is another version of the application that needs to be deployed, and during the deployment phase, you need to update without facilitating an outage. The Rolling Update strategy allows Kubernetes to update a service without facilitating an outage by proceeding to update pods one at a time.
+
+spec.strategy.rollingUpdate.maxUnavailable — The maximum number of pods that can be unavailable during the Rolling update.
+
+spec.strategy.rollingUpdate.maxSurge — The maximum number of pods that can be scheduled above the desired number of pods.
+
+spec.minReadySeconds — An optional Integer that describes the minimum number of seconds, for which a new pod should be ready without any of its containers crashing for it to be considered available.
+
+spec.revisionHistoryLimit — An optional integer attribute that you can use to tell Kuberneres explicitly how many old ReplicaSets to retain at any given time.
+
+spec.template.metadata.labels — Adds labels to a deployment specification.
+
+spec.selector — An optional object that tells the Kubernetes deployment controller to only target pods that match the specified labels. Thus, to only target pods with the labels of "app" and "deployer", you can make the following modification to our deployment YAML.
+
+
+
+
+
+
+
+
+
+===================================================================================================================================================
+===================================================================================================================================================
+
+JavaTechie SpringBoot CRUD Application>>>>
+
+mvn package
+
+minikube start --driver=docker
+
+minikube status
+
+kubectl cluster-info
+
+
+minikube -p minikube docker-env
+
+minikube docker-env
+& minikube -p minikube docker-env --shell powershell | Invoke-Expression
+
+docker images
+
+docker build -t springboot-crud-k8s:1.0 -f Dockerfile .
+
+docker images
+
+kubectl apply -f mysql-configMap.yaml
+
+kubectl get configmap
+
+kubectl apply -f mysql-secrets.yaml
+
+kubectl get secrets
+
+kubectl apply -f db-deployment.yaml
+
+kubectl get deployments
+
+kubectl apply -f app-deployment.yaml
+
+kubectl get deployments
+
+kubectl get service
+
+kubectl get pods
+kubectl logs pod1
+kubectl logs pod2
+kubectl logs pod3
+
+kubectl get pods
+kubectl exec -it mysql-9d7665cfd-gnfmr /bin/bash   # this command will give us interactive shell for this pod and we can check the schema and tables in the MySQL database i.e. created
+
+inside in MySQL shell::::
+mysql -h mysql -u raj -praj123
+show databases;
+use k8crud;
+show tables;
+
+kubectl get svc # from this command we will get port number for our spring-boot application
+
+kubectl get nodes
+
+
+minikube ip 	# this will give us our node IP-Address
+
+kubectl get nodes -o wide  # this will give us our node IP-Address
+
+
+minikube dashboard
+
+# this command will work in Linux or mac not in cmd or powershell
+# this is the command to encrypt username and password for Kubernetes to keep username and password in secrects in encrypted format.
+echo -n 'raj' | base64
+echo -n 'raj123' | base64
+
+
+kubectl get service
+
+kubectl delete service <service-name>
+
+kubectl get deployments
+
+kubectl delete deployment <deployment-name>
+
+kubectl get svc
+kubectl get deployments
+kubectl get pods
+
+minikube stop
+
+kubectl get nodes     # this command will throw error which confirms us that no node is running thus minikube stoped
+
+minikube delete		# this command will delete local Kubernetes cluster and it also removes vm and all the associated files.
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+In a Kubernetes service YAML configuration, if you have server.port=8383 in your application.properties, you would typically set the targetPort to 8383 to match the port your application is running on inside the container. The port can be any port that is open on the node and is used to access the service from outside the Kubernetes cluster. Here’s an example of how it might look:
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: my-application
+  ports:
+    - protocol: TCP
+      port: 80 # This is the port used to access the service from outside
+      targetPort: 8383 # This is the container port where your application is running
+
+In this example, external traffic to the service on port 80 will be directed to the target port 8383 on the pods selected by the service. You can choose any port number for port that suits your requirements and is not already in use by another service.
+
+...........................
+
+nodeport: Listens for external request on all worker nodes on nodeip:nodeport and forwards the request to port.
+
+ClusterIP: Request comes through ingress and points to service name and port.
+
+port: Internal cluster service port for container and listens for incoming request from the nodeport and forwards to targetPort.
+
+targetPort: Receives the request from port and forwards to container pod(port) where it's listening. Even if you don't specify this will get by default assigned the same port numbers as port.
+
+So the traffic flows Ingress-->Service-->Endpoint(Basically has POD IP)-->POD
+
+
+..........................
+
+if container listens on port 9376, then targetPort: 9376
+
+if a service listens on port 80, then port: 80
+
+Then service ports config looks like below
+
+ports:
+ - protocol: TCP
+   port: 80
+   targetPort: 9376
+Finally, request received to the service’s port, and forwarded on the targetPort of the pod.
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: my-app
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+
+port is used to listen for incoming traffic from external clients, while targetPort is the Service‘s internal communication port with the pods responsible for handling that traffic.
+targetPort should be set to the pod’s port number and port to the client-accessible external port for Service access.
+
+
+
+
+
+
+java.lang.NullPointerException: Cannot invoke "org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(java.sql.SQLException, String)" because the return value of "org.hibernate.resource.transaction.backend.jdbc.internal.JdbcIsolationDelegate.sqlExceptionHelper()" is null
+
+
+
+
+
+
+
+
+
+
+
+
+<packaging>jar</packaging>
+
+>>>>>
+
+<groupId>com.mytutorial</groupId>
+	<artifactId>springboot-crud-k8s</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>springboot-crud-k8s</name>
+	<description>springboot-crud-k8s</description>
+	<packaging>jar</packaging>
+
+
+mvn clean package
+
+
+
+
+

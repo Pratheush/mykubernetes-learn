@@ -1,0 +1,9 @@
+Would you like me to bundle these into a single YAML file with comments for learning or testing? Or maybe add a CronJob example next?
+
+Would you like me to bundle these into a single YAML file with comments for learning or testing? Or maybe add a CronJob example next?
+
+
+Want me to add a ConfigMap or VolumeMount example next? Or maybe show how to expose the Service externally using NodePort or LoadBalancer ?
+
+Would you like me to also extend this with Horizontal Pod Autoscaler (HPA) so you can see how Kubernetes auto-scales Nginx pods based on CPU load?
+

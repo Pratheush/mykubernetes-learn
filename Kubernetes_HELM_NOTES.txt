@@ -1,0 +1,831 @@
+Could not obtain connection to query metadata
+
+java.lang.NullPointerException: Cannot invoke "org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(java.sql.SQLException, String)" because the return value of "org.hibernate.resource.transaction.backend.jdbc.internal.JdbcIsolationDelegate.sqlExceptionHelper()" is null
+
+
+Set a root password using mysql_safe --password=password --user=root
+Set grant privileges with user root
+restart the MySQL server using /etc/init.d/MySQL stop
+
+Radical islam is the snake in the grass, moderate islam is the grass the snake hides in.
+
+
+minikube is for creating Kubernetes cluster on our local system
+docker for docker engine and containers
+helm is required to deploy our Kubernetes configuration on the Kubernetes cluster
+kubectl is cli for Kubernetes cluster 
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service  # DNS name
+  labels:
+    app: mysql
+    tier: database
+spec:
+  ports:
+      type: ClusterIP
+    - port: 3306
+      targetPort: 3306 # targetPort is bind with the containerPort i.e. [spec >> ports >> targetPort] section in Service match with the [spec >> template >> spec >> containers >> ports >> containerPort] section in Deployment
+      protocol: TCP
+  selector:       # mysql Pod Should contain same labels i.e in Service [spec >> selector >> app] section should match with the [spec >> template >> metadata >> labels >> app] section of mysql Deployment file or where we defined this is how mysql-service will get bind with the mysql pod
+    app: mysql
+    tier: database
+  clusterIP: None 
+
+
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: release-name-mysql-username
+type: Opaque
+stringData:
+  username: root     # username and password raj and raj123 here in encrypted format
+  
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: release-name-mysql-password
+type: Opaque
+stringData:
+  password: root # here username and password is in encrypted format
+
+
+env:
+  - name: SPRING_DATASOURCE_URL
+    value:  "jdbc:mysql://mysql-service:3306/k8crud?useSSL=false&allowPublicKeyRetrieval=true"
+  - name: SPRING_DATASOURCE_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: release-name-mysql-username
+	key: username
+  - name: SPRING_DATASOURCE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: release-name-mysql-password
+        key: password
+
+
+
+
+
+
+
+apiVersion: v1 # Kubernetes API version
+kind: Service # Kubernetes resource kind we are creating
+metadata: # Metadata of the resource kind we are creating
+  name: springboot-crud-svc
+spec:
+  selector:
+    app: springboot-k8s-mysql
+  ports:
+    - protocol: "TCP"
+      port: 8080 # The port that the service is running on in the cluster
+      targetPort: 8383 # The port exposed by the service ### TargetPort: This is the actual port on which your application is running inside the container.
+  type: LoadBalancer
+
+
+
+
+
+
+
+
+server.port=8080
+
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.url=jdbc:mysql://127.0.0.1:3306/ytlecture?createDatabaseIfNotExist=true
+spring.datasource.username=root
+spring.datasource.password=root
+
+#Add the following property to enable automatic DDL (Data Definition Language) generation:
+spring.jpa.hibernate.ddl-auto=update
+
+spring.jpa.show-sql: true
+
+
+
+
+
+
+
+Dockerfile::::::::::::::::::::::::
+
+# Use an official OpenJDK runtime as a parent image
+FROM openjdk:17-jdk-slim
+
+# Set the working directory to /app inside the container
+WORKDIR /app
+
+# Copy the compiled java application JAR file into the container at /app
+COPY ./target/spring-mysql-demo.jar /app
+
+# Make port 8080 available to the world outside this container
+EXPOSE 8080
+
+# Run spring-mysql-demo.jar when the container launches
+CMD ["java", "-jar", "spring-mysql-demo.jar"]
+
+
+
+env file::::::::::::::::
+MYSQL_DATABASE=ytlecture
+MYSQL_ROOT_PASSWORD=root
+MYSQL_USER=root
+MYSQL_PASSWORD=root
+
+
+docker-compose.yaml::::::::::::::::::::::
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:latest
+    container_name: yt-mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      #      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql  # Volume configuration for MySQL data
+    networks:
+      - spring-mysql-network
+
+  spring-mysql-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spring-mysql-demo-container
+    depends_on:
+      - mysql
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?createDatabaseIfNotExist=true&characterEncoding=UTF-8&useUnicode=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    networks:
+      - spring-mysql-network
+
+networks:
+  spring-mysql-network:
+    driver: bridge
+
+volumes:
+  mysql-data:  # Define a named volume for MySQL data persistence
+
+
+winget install helm
+# this will create Kubernetes configuration for us in ytchart directory ::::::::::::::
+helm create ytchart
+
+
+
+
+values.yaml::::::::
+
+replicaCount: 1
+
+mysql:
+  databaseName: k8crud
+
+springApp:
+  image:
+    repository: spring-mysql-demo
+    pullPolicy: ifNotPresent
+    tag: latest
+
+mysqlVolume:
+  persistentVolumeClaim:
+    storageSize: 500Mi
+
+  persistentVolume:
+    storageSize: 500Mi
+    pathOnHost: /var/lib/mysql
+
+
+  mountPath: /var/lib/mysql 
+
+
+
+
+secrets.yaml:::::::::::::::::::::::::
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-mysql-root-password
+type: Opaque
+stringData:
+  password: root
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-mysql-username
+type: Opaque
+stringData:
+  username: root
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-mysql-password
+type: Opaque
+stringData:
+  password: root
+
+
+
+
+
+
+mysql-deployment.yaml:::::::::::::::::::::::
+# mysql-pv.yaml
+# A Persistent Volume (PV) to allocate storage space for the database.
+# in persistent volume we define hostPath with local system path, then we define capacity and access mode
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-mysql-pv
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: {{ .Values.mysqlVolume.persistentVolume.storageSize }}
+  accessModes:
+    - ReadWriteOnce   # ReadWriteOnce, ReadOnlyMany, or ReadWriteMany
+  hostPath:
+    path: {{ .Values.mysqlVolume.persistentVolume.pathOnHost }}
+---
+# mysql-pvc.yaml
+# A Persistent Volume Claim (PVC) that will claim the PV for the deployment (kind of request made to kubernetes for claiming persistent volume) .
+# Define a 'Persistent Volume Claim'(PVC) for Mysql Storage, dynamically provisioned by kubernetes cluster.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-mysql-pvc # name of PVC essential for identifying the storage data
+  labels:
+    app: mysql
+    tier: database
+spec:
+  accessModes:
+    - ReadWriteOnce   #This specifies the mode of the claim that we are trying to create. ReadWriteOnce, ReadOnlyMany, or ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.mysqlVolume.persistentVolumeClaim.storageSize }}    #This will tell kubernetes about the amount of space we are trying to claim.
+---
+# Configure 'Deployment' of mysql server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mysql-deployment
+  labels:
+    app: mysql
+    tier: database
+spec:
+  replicas: 1
+  selector: 		# mysql Pod Should contain same labels
+    matchLabels:
+      app: {{ .Release.Name }}-mysql
+      tier: database
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels: # Must match 'Service' and 'Deployment' selectors
+        app: {{ .Release.Name }}-mysql
+        tier: database
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: {{ .Release.Name }}-mysql-container
+          image: mysql:latest 					# image from docker-hub
+          imagePullPolicy: IfNotPresent  # Always , Never , IfNotPresent
+          resources:
+            requests:
+              memory: "200Mi"
+              cpu: "0.5"
+              ephemeral-storage: "500Mi"
+            limits:
+              cpu: "1"
+              memory: "800Mi"
+              ephemeral-storage: "1Gi"
+          env:
+            - name: MYSQL_ROOT_PASSWORD # Setting Root Password from a Secret i.e. mysql-secrets
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-mysql-root-password
+                  key: password
+            - name: MYSQL_USER  # Setting USERNAME from a Secret i.e. mysql-secrets
+              valueFrom :
+                secretKeyRef :
+                  name: {{ .Release.Name }}-mysql-username
+                  key: username
+            - name: MYSQL_PASSWORD # Setting USER PASSWORD from a Secret
+              valueFrom :
+                secretKeyRef :
+                  name: {{ .Release.Name }}-mysql-password
+                  key: password
+            - name: MYSQL_DATABASE # Setting Database Name from a 'ConfigMap' i.e. mysql-configMap
+              value: {{ .Values.mysql.databaseName }}
+              valueFrom :
+                configMapKeyRef :
+                  name : mysql-configmap
+                  key :  dbName
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:        # Mounting volume obtained from Persistent Volume Claim
+            - name: {{ .Release.Name }}-mysql-persistent-storage  # [volumeMounts >> name] should match with the name in [volumes >> name] section of MySQL Deployment
+              mountPath: {{ .Values.mysqlVolume.mountPath }} #This is the path in the container on which the mounting will take place.
+      volumes:
+        - name: {{ .Release.Name }}-mysql-persistent-storage # Obtaining 'volume' from PVC ::: Connect the PVC to the deployment.
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-mysql-pvc   # binding the persistent volume claim to the deployment by defining same name as in persistent volume claim of [metadata>> name] section
+---
+# mysql-service.yaml
+# Define a 'Service' To Expose mysql to Other Services
+# Service will receive traffic from external world on the port 3306 i.e. [spec >> ports >> port] section and from the port traffic will be forwarded to the targetPort i.e [spec >> ports >> targetPort] section
+#  and from the targetPort traffic will be forwarded to the containerPort of mysql deployment i.e. [spec >> template >> spec >> containers >> ports >> containerPort]
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-mysql-service  # DNS name
+  labels:
+    app: {{ .Release.Name }}-mysql
+    tier: database
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3306
+      targetPort: 3306 # targetPort is bind with the containerPort i.e. [spec >> ports >> targetPort] section in Service match with the [spec >> template >> spec >> containers >> ports >> containerPort] section in Deployment
+      protocol: TCP
+  selector:       # mysql Pod Should contain same labels i.e in Service [spec >> selector >> app] section should match with the [spec >> template >> metadata >> labels >> app] section of mysql Deployment file or where we defined this is how mysql-service will get bind with the mysql pod
+    app: {{ .Release.Name }}-mysql
+    tier: database
+  #clusterIP: None  # We Use DNS, Thus ClusterIP is not relevant
+
+
+
+
+
+
+
+
+
+spring-app-deployment.yaml::::::::::::::::::::::::::::
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-spring-app-deployment
+  labels:
+    app: {{ .Release.Name }}-spring-app
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-spring-app
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-spring-app
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: {{ .Release.Name }}-spring-app-container
+          image: {{ .Values.springApp.image.repository }}:{{ .Values.springApp.image.tag }}
+          imagePullPolicy: {{ .Values.springApp.image.pullPolicy }}
+          resources:
+            requests:
+              memory: "200Mi"
+              cpu: "0.5"
+              ephemeral-storage: "500Mi"
+            limits:
+              cpu: "1"
+              memory: "800Mi"
+              ephemeral-storage: "1Gi"
+          ports:
+            - containerPort: 8080 # on this port we are exposing our springboot application i.e. springboot-application's application.properties file server.port should match with the containerPort
+          env:   # Setting Enviornmental Variables
+            - name: SPRING_DATASOURCE_URL
+              value: {{ include "mys-spring-app.fullMySQLConnectionURL" . | quote }}
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-mysql-username
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-mysql-password
+                  key: password
+            
+
+
+
+
+spring-app-service.yaml::::::::::::::::::::
+
+apiVersion: v1 # Kubernetes API version
+kind: Service # Kubernetes resource kind we are creating
+metadata: # Metadata of the resource kind we are creating
+  name: {{ .Release.Name }}-spring-app-service
+spec:
+  selector:
+    app: {{ .Release.Name }}-spring-app
+  ports:
+    - protocol: TCP
+      port: 8080 # The port that the service is running on in the cluster
+      targetPort: 8080 # The port exposed by the service ### TargetPort: This is the actual port on which your application is running inside the container.
+  type: LoadBalancer
+
+
+
+
+
+_helpers.tpl::::::::::::::::::::::::::::::::::
+
+{{?* Define a helper o generate the full MySQL connecgion URL */}}
+{{- define "my-spring-app.fullMySQLConnectionURL" -}}
+jdbc:mysql://{{ .Release.Name }}-mysql-service:3306/{{ .Values.mysql.databaseName }}?createDatabaseIfNotExist=true&characterEncoding=UTF-8&useUnicode=true&useSSL=false&allowPublicKeyRetrieval=true
+{{- end -}}
+
+
+
+
+
+
+HELM acts as a package manager for Kubernetes. which simplifies deploying, upgrading and managing our applications on a Kubernetes Cluster
+
+Challaneges Without HELM::::::::::::::::::::::::::::
+1. Helm solves problem of Defining/managing and executing multiple manifest file i.e. (executing Deployments and Services and Other Yaml configurations one-by-one is huge challenge that helm solves by using HELM)
+
+2. Deployment ordering challenge i.e Remembering the order of execution of multiple manifest file is another challenge ( for example ::: first MySQL deployment and services then Kafka deployment and services and then Springboot application deployment ans services)
+
+3. Versioning and Rollbacks for all resources :: Imagine this application is running in production i.e. (springboot-app + MySQL +  Kafka) and application is running with kafka current version 3.0.0 suddenly a critical bug is found and we need to urgently rollback to the previous version in such scenario we need to rollback individual resources managed by Kubernetes such as deployment object , service object , stateful states, daemon states and other Kubernetes object we need to rollback them one-by-one. managing versioning and rollback for all resources in one-go can present
+another significant challenge without using this helm
+
+4. Environment-specific Configuration Files ::: Segregate Environment Specific Values :::for-example imagine in our Deployment YAML configuration for our springboot-application we had hardcoded replicas as 3 but due to load in production or load in QA while testing load performance if we want to increase replicas from 3 to 5 then dynamically its not possible since we hardcoded the values in deployment yaml file. similarly if suppose we want to check or use a hot-fix feature which is introduced in some specific image version and if we had hardcoded our application image version in Deployment YAML file then its impossible to check the hot-fix feature without changing the image version such challenges are solved easily using HELM
+
+
+
+if Springboot application depends on MySQL-DB and Kafka then Sequence of running Deployment and Service Yaml configuration is like (1). MySQL Deployment and Service and related configuration Yaml files (2) Kafka Deployment and Service configuration yaml files (3) Then we can run our Springboot Application Deployment and Service Configuration Yaml Files.
+
+
+HELM CHART OR HELM PACKAGING :::: in Kubernetes term we call it HELM CHART
+mychart is directory where we create HELM PACKAGING ::::
+
+mychart/
+   >> Chart.yaml
+   >> values.yaml
+   >> charts/
+   >> templates/
+      >> _helpers.tpl
+      >> deployment.yaml
+      >> service.yaml
+      >> ... (other Kubernetes manifest files)
+   >> .helmignore
+
+HELM is a template engine will generate standard templates for us where we can define our Kubernetes manifest 
+
+IN HELM CHART templates Directory contains Kubernetes manifest templates here we can add deployment, service, secret, configMap, ingress etc all the Kubernetes manifest
+
+Chart.yaml :: This file contains metadata about the chart, such as its name, version and other relevant information.
+
+values.yaml :: This file contains default configuration values for the chart. It helps in parameterizing the templates. This file contains dynamic values for the Kubernetes manifest file or yaml configuration like image, number of pods or replicas etc
+
+charts/: :: This directory is used to store any dependent charts. if your chart depends on other charts, they can be included here. for-example :: if my springboot app depends on
+MySQL and Kafka so i can create two different charts for MySQL and Kafka or I can add MySQL and kafka charts as sub-chart inside the main charts folder. and we can include those dependent charts inside main charts folder 
+
+we can also ask HELM to create separate charts or configuration for each for MySQL and Kafka but that's not a good practise 
+rather
+we can ask HELM to create sub-chart for database MySQL and Kafka which we can include inside main charts directory
+
+i.e. like the given below
+
+mychart/
+   >> Chart.yaml
+   >> values.yaml
+   >> charts/
+      >> MySQL/
+      >> Kafka/
+   >> templates/
+      >> _helpers.tpl
+      >> deployment.yaml
+      >> service.yaml
+      >> ... (other Kubernetes manifest files)
+   >> .helmignore
+
+
+I just need to change the value in values.yaml file then those values will be dynamically populated in deployment and service and other manifest configuration.
+
+
+
+THIS IS HOW HELM EXECUTES MANIFEST OR YAML KUBERNETES CONFIGURATION IN ORDER OR ONE-BY-ONE SEQUENCETIALLY:::::::::::::::::::
+
+here in below HELM file in dependencies section we have added MySQL and kafka in a sequence or in a order and based on that order HELM will execute dependencies manifest first and then HELM will execute springboot-application manifest
+
+apiVersion: v2
+name: myapp
+description: A Helm chart for Kubernetes 
+version: 0.1.0
+appVersion: 1.0.0
+
+dependencies:
+  - name: MySQL
+    version: "8.8.26"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: Kafka
+    version: "12.11.3"
+    repository: "https://charts.bitnami.com/bitnami"
+
+
+
+
+
+
+NOW HOW HELM WILL HELP US TO QUICK ROLLBACK::::::::::::::::::
+Each time we deployed a HELM Chart . Helm create a release. Every release has version number which will increment with each update.
+
+helm history myapp (chart directory name)
+Revision 	UPDATED		STATUS	  CHART      APP VERSION	Description
+1	   Mon May 10 23     deployed    myapp-0.1.0   1.0.0		Install complete
+2	   Mon May 10 23     deployed    myapp-0.2.0   1.0.1		Upgrade complete
+
+# Rollback to revision 1
+helm rollback myapp 1
+
+
+
+
+ 
+Environment-specific Configuration Files // Segregate Environment Specific Values 
+Define separate values file for each environment.
+
+mychart/
+   >> Chart.yaml
+   >> values.yaml
+   >> values-dev.yaml
+   >> values-staging.yaml
+   >> values-prod.yaml
+   >> charts/
+      >> MySQL/
+      >> Kafka/
+   >> templates/
+      >> _helpers.tpl
+      >> deployment.yaml
+      >> service.yaml
+      >> ... (other Kubernetes manifest files)
+   >> .helmignore
+
+
+
+values-dev.yaml::::::::::
+replicaCount: 1
+
+image:
+  repository: myapp
+  tag: "dev"
+  pullPolicy: ifNotPresent
+  
+service:
+  type: ClusterIP
+  port: 8080
+
+env:
+  name: development
+
+
+
+values-stg.yaml::::::::::
+replicaCount: 2
+
+image:
+  repository: myapp
+  tag: "staging"
+  pullPolicy: ifNotPresent
+  
+service:
+  type: ClusterIP
+  port: 8080
+
+env:
+  name: staging
+
+
+
+
+
+values-prod.yaml::::::::::
+replicaCount: 3
+
+image:
+  repository: myapp
+  tag: "prod"
+  pullPolicy: Always
+  
+service:
+  type: LoadBalancer
+  port: 8080
+
+env:
+  name: production
+
+
+NOW TO RUN SPECIFIC CONFIGURATION USING HELM:::::::::: while installing mychart consider the configuration of values-dev.yaml
+helm install myapp ./myapp -f values-dev.yaml
+
+
+
+
+
+
+
+
+# this command will show us all the configurations configured for Kubernetes cluster
+helm template ytchart/
+
+minikube image ls
+
+
+# we can deploy all the configurations 
+# ytchart is the directory name
+# mychart is our chart-name
+helm install mychart ytchart
+
+
+#if we want to see all the configurations
+kubectl get all
+
+kubectl get services
+
+ClusterIP is the internal service so we can't access this service externally outside of kubernetes-cluster
+LoadBalancer is the internal service so we can't access this service externally outside of kubernetes-cluster
+
+# we will get proxy url from minikube to access our endpoint
+minikube service mychart-mysql-service --url   // mychart-mysql-service this we get from kubectl get services
+
+
+minikube tunnel # because of this command it has started tunnel and we can access our spring-boot application
+
+
+kubectl get pods
+
+kubectl logs -f <pod-1-name>
+
+
+
+
+
+# to create chart:::: we can specify any name for chart
+helm create spring-app-chart
+
+tree spring-app-chart
+
+type of service ::: ClusterIP, LoadBalancer, NodePort
+
+
+# we can deploy all the configurations 
+# spring-app-chart is the directory name where templates, charts values.yaml all exist
+# myapp-chart is our chart-name
+helm install myapp-chart spring-app-chart
+
+
+kubectl get all
+
+kubectl get pods
+
+kubectl logs pod1
+
+kubectl get services
+
+
+# we will get proxy url from minikube to access our endpoint
+minikube service mychart-mysql-service --url   // mychart-mysql-service this we get from kubectl get services
+
+
+==========================================================================================================================================================================
+==========================================================================================================================================================================
+
+
+Creating a Helm chart for a Spring Boot application with a MySQL database involves several steps. Here’s a high-level guide to help you get started:
+
+1. Create a Spring Boot Application:
+	Ensure your Spring Boot application is containerized and the Docker image is available in a registry.
+2. Set Up Your Helm Chart for Spring Boot:
+	Use the helm create command to scaffold a new chart:
+
+
+helm create springboot-app
+
+This will create a new directory springboot-app with the necessary files for your Helm chart.
+
+3. Add MySQL as a Sub-Chart Dependency:
+	In the springboot-app/Chart.yaml file, add MySQL as a dependency:
+
+dependencies:
+  - name: mysql
+    version: "x.x.x" # specify the version you want to use
+    repository: "https://charts.bitnami.com/bitnami"
+
+Run helm dependency update in the springboot-app directory to fetch the MySQL chart.
+
+4. Configure MySQL Values:
+	Create a values.yaml file inside the springboot-app directory.
+	Override the default values of the MySQL chart to suit your application’s needs:
+
+ mysql:
+  auth:
+    rootPassword: "your-root-password"
+    database: "your-database-name"
+    user: "your-user"
+    password: "your-password"
+
+5. Configure Spring Boot Values:
+	In the same values.yaml, configure the values for your Spring Boot application:
+
+springboot-app:
+  image:
+    repository: "your-docker-image-repository"
+    tag: "your-image-tag"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+
+6. Create Templates for Spring Boot:
+	Inside the springboot-app/templates directory, create Kubernetes manifest files for your Spring Boot application (e.g., deployment.yaml, service.yaml).
+
+7. Package and Deploy:
+	Package your Helm chart:
+
+helm package springboot-app
+
+8. Deploy your application along with the MySQL database:
+
+helm install my-springboot-app springboot-app
+
+
+
+
+
+
+1. Defining Dependencies in Chart.yaml:
+
+For example, consider the following Chart.yaml snippet:
+dependencies:
+  - name: nginx
+    version: "1.2.3"
+    repository: "https://example.com/charts"
+  - name: memcached
+    version: "3.2.1"
+    repository: "https://another.example.com/charts"
+
+Here, name refers to the name of the dependent chart (matching the name in that chart’s Chart.yaml).
+version contains a semantic version or version range.
+repository points to a Chart Repository (you can also use an alias or a local path).
+
+
+2. Managing Dependencies
+Helm provides commands to manage dependencies:
+helm dependency build: Rebuilds the charts/ directory based on the Chart.lock file.
+helm dependency list: Lists the dependencies for the given chart.
+helm dependency update: Updates the charts/ directory based on the contents of Chart.yaml.
+
+
+3. Sub-Charts:
+A sub-chart is a way to declare and manage chart dependencies.
+Instead of installing each chart individually, you can create a sub-chart that includes all the desired dependencies.
+Sub-charts allow you to encapsulate related charts together.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
