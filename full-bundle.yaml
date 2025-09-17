@@ -1,0 +1,85 @@
+
+# ============================================================
+# 1. Deployment: Runs an Nginx web server
+# ============================================================
+# ---------------- Deployment ----------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+spec:
+  replicas: 2  # Number of Pods to run
+  selector:
+    matchLabels:
+      app: my-app  # Label used to match Pods
+  template:
+    metadata:
+      labels:
+        app: my-app  # Label assigned to Pods
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:stable-alpine
+        ports:
+        - containerPort: 80
+
+---
+# ============================================================
+# 2. Service: Exposes the Nginx deployment
+# ============================================================
+#  change type from ClusterIP to NodePort 
+#   accessible via localhost:<nodeport>
+# ---------------- Service ----------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: my-app  # Must match Deployment's Pod label
+  ports:
+  - protocol: TCP
+    port: 80         # Port exposed by Service
+    targetPort: 80   # Port inside the Pod
+    nodePort: 30080  # Optional: choose a port between 30000–32767
+  type: NodePort  # Internal access only/Accessible via localhost:<nodeport>. ClusterIP/NodePort/LoadBalancer/
+
+---
+# ============================================================
+# 3. Job: Runs once to print "Hello from Job"
+# ============================================================-
+# ---------------- Job ----------------
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: hello
+        image: busybox:stable
+        command: ["echo", "Hello from Kubernetes Job"]
+      restartPolicy: Never  # Don't restart once done
+  backoffLimit: 2  # Retry if fails (max 2 retries)   
+
+---
+# ============================================================
+# 4. CronJob: Runs every 2 minutes, prints "Hello from CronJob"
+# ============================================================
+# ---------------- CronJob ----------------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hello-cronjob
+spec:
+  schedule: "*/2 * * * *"  # Every 2 minutes (CRON syntax)
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox:stable
+            command: ["echo", "Hello from CronJob"]
+          restartPolicy: Never

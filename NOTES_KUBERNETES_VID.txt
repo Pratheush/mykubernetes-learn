@@ -1,0 +1,1905 @@
+in kubernetes cluster all the request and communication occurs through API-SERVER when we have to communicate to kubernetes cluster
+
+Authentication, Authorization, Admission
+
+when we place a request to kubernetes cluster then request comes to API-Server and then there
+1. USER IS AUTHENTICATED WITH THE HEADERS PASSED (check user has right credentials)
+2. AUTHORIZED USING RBAC (example : checks user is authorized to create and run pod)
+3. WEBHOOKS TO VALIDATE OR MUTATE (checks if it is admission webhook and check if it is registry setup so to pull from registry or not)
+4. SAVE TO ETCD (after checking all the above this request is persisted)
+
+all the communication in kubernetes cluster happens through api-server
+
+then api-sever tells scheduler that work-load has come SO SCHEDULER TRIES TO FIND THE BEST FIT NODE BASED ON TAINTS/TOLERATIONS, AFFINITY, NODESELECTOR & UPDATES THE POD SPEC WITH NODE (this will generate a spec file yaml file and the scheduler select a node from yaml file and look for the best fit node and update the node into pod spec)
+
+
+THERE ARE SOME BUILT-IN CONTROLLERS AND WE CAN ALSO ADD CONTROLLERS THAT WE CREATE WHEN WE CREATE APPLICATIONS
+IN CONTROLLER-MANAGER THERE IS :
+REPLICASET CONTROLLER
+DEPLOYMENT CONTROLLER
+JOB CONTROLLER
+STATEFULSET CONTROLLER
+DAEMONSET CONTROLLER
+etc ...
+
+CONTROLLED-LOOPS ARE LIKE WATCH-LOOPS. WATCH-LOOPS continuously monitor specific object and if any change occurs then take that specific object back into that desired state.
+(MAKE SURE ACTUAL STATE = DESIRED STATE. ANY ISSUE TELL API-SERVER WHAT TO DO)
+
+ETCD IS SWAPPABLE WITH SQLITE OR MYSQL ETC...
+ETCD: KEY-VALUE STORE FOR DISTRIBUTED SYSTEMS. API-SERVER WRITES TO IT. IN HA MODE 3 ETCD NODE WHERE 1 LEADER IS ELECTED USING RAFT ALGO(LEADES ELECTION) 2n+1
+
+IN KUBERNETES CLUSTER AROUND 3 MASTER NODE (CONTROL-PLANE NODE) AND N NUMBER OF WORKER-NODES SO THAT HA IS MAINTAINED.
+
+
+
+WORKER-NODES :::
+
+KUBELET : KUBELET SEES THAT THE PROCESS i.e. ALL PODS ARE RUNNING OR NOT IN RIGHT WAY.
+SO KUBELET IS RUNNING POD .
+REQUEST FOR RUNNING POD WILL COMES TO CONTAINERD AND FROM CONTAINERD REQUEST GOES TO SHIM AND REQUEST GOES FROM SHIM TO RUNC OR ANY OTHER LOW-LEVEL CONTAINER RUNTIME.
+
+CONTAINERD IS RUNTIME
+IN CONTAINERD THERE IS A PROCESS WHICH CHECKS
+CRI IS CONTAINERD
+CNI IS FLANNEL, CALICO, CILIUM
+CSI IS LONGHORN, OPENEBS
+
+
+KUBE-PROXY
+KUBE-PROXY MAINTAINS THE NETWORK RULE ON THE NODE . THESE NETWORK RULES ALLOW NETWORK COMMUNICATION TO YOUR PODS FROM NETWORK SESSIONS INSIDE OR OUTSIDE OF YOUR CLUSTER.
+
+KUBE-PROXY SEES HOW NODES AND PODS ARE COMMUNICATING WITH EACH OTHER MAINTAINING IPTABLES OR IPVS RULES
+
+EVERY TIME A POD IS CREATED, THE IP-TABLES IS HANDLED BY KUBE-PROXY
+
+SO OUR APPLICATION IS RUNNING IN THE POD AS A SINGLE OR MULTIPLE-CONTAINER.
+SO IN POD THERE CAN BE ONE CONTAINER OR TWO CONTAINER OR MULTI-CONTAINER
+
+MULTI-CONTAINERS POD WITH SIDECAR IS USED
+
+=============================================================
+
+APPLICATION into CONTAINER form and deploy into pod or deployment(yaml based) form.
+
+EXTERNAL MACHINE COMMUNICATES TO KUBERNETES CLUSTER THROUGH SERVICES(LOAD-BALANCER) . LOAD-BALANCER IS CREATED WITH THE HELP OF CCM(CLOUD CONTROL MANAGER). CCM BRINGS LOAD-BALANCER FROM CLOUD AND ATTACH LOAD-BALANCER TO SERVICE THEN EXTERNAL-MACHINE CAN CONNECT WITH THE PUBLIC IP AND ACCESS APPLICATION
+
+LOAD-BALANCER IS NOT KUBERNETES OBJECT IT IS COMMING FROM SPECIFIC CLOUD PROVIDER. SO KUBERNETES IS COMMUNICATING TO EXTERNAL SYSTEM AND EXTERNAL RESOURCE (CLOUD-LOAD-BALANCER), KUBERNETES IS MANAGING THAT EXTERNAL RESOURCE (CLOUD-LOAD-BALANCER)
+
+SIMILARLY WHEN WE ARE RUNNING STATEFUL WORKLOAD LIKE DATABASE THEN KUBERNETES AND CLOUD-CONTROL-MANAGER PROVISIONS DISK SPACE FOR PERSISTENT-VOLUME AND PERSISTENT-VOLUME-CLAIM
+CSI-DRIVER COMMUNICATES WITH CLOUD THUS CREATING VOLUME AND ATTACHES TO KUBERNETES.
+
+
+FIRST CREATE INGRESS CONTROLLER BY INSTALLING IT THEN INGRESS WORKS AND INGRESS OBJECT IS CREATED IN KUBERNETES WHICH COMMUNICATES TO LOAD-BALANCER AND THAT'S HOW WE GET IP AND DNS
+
+CONTROLLER IS POD AND KUBELET IS SYSTEMD PROCESS
+
+IN KUBERNETES  KUBEVIRT TOOL LETS YOU RUN AND MANAGE VIRTUAL MACHINES SO NOW USING YAML FILE WE CAN CREATE VIRTUAL-MACHINE TOO
+
+THUS KUBERNETES IS ALSO CONTAINER ORCHESTRATOR AND VIRTUAL-MACHINE ORCHESTRATOR AND INFRASTRUCTURE ORCHESTRATOR TOO.
+
+
+IN CLUSTER WE INSTALLED CROSSPLANE AND THIS IS ALSO TOOL LIKE KUBEVIRT AND CONFIGURE CROSSPLANE TO COMMUNICATE TO CLOUD PROVIDER LIKE AWS.NOW WE CAN USE YAML FILE TO CREATE CLUSTER OR WE CAN CREATE OBJECT OR CREATE S3. THIS CROSSPLANE COMMUNICATE TO CLOUD AND CREATE CLUSTER OR OBJECT OR S3 IN CLOUD. SO KUBERNETES IS ALSO MANAGING CLOUD RESOURCES TOO.
+
+
+
+DEPENDS ON USECASE KUBERNETES CAN DO DIFFERENT THINGS LIKE :
+1. MANAGE CONTAINERS
+2. MANAGE VIRTUAL-MACHINE
+3. MANAGE WEB-ASSEMBLY MODULES
+4. MANAGE INFRASTRUCTURE
+
+
+
+cat ~/.kube/config
+
+kubectl create deploy demo --image=nginx --dry-run=client -oyaml
+
+kubectl create deploy demo --image=nginx --replicas=3
+
+PS C:\Users\prath> kubectl get rs
+NAME                       DESIRED   CURRENT   READY   AGE
+my-deployment-79bd6f4ccf   2         2         2       3h16m
+PS C:\Users\prath> kubectl get replicaset
+NAME                       DESIRED   CURRENT   READY   AGE
+my-deployment-79bd6f4ccf   2         2         2       3h16m
+
+
+
+
+
+PS C:\Users\prath> kubectl get pods
+NAME                             READY   STATUS      RESTARTS   AGE
+hello-cronjob-29264302-gfxm5     0/1     Completed   0          5m11s
+hello-cronjob-29264304-lvwcv     0/1     Completed   0          3m11s
+hello-cronjob-29264306-8hm5q     0/1     Completed   0          71s
+my-deployment-79bd6f4ccf-7p4ng   1/1     Running     0          3h18m
+my-deployment-79bd6f4ccf-tmdcg   1/1     Running     0          3h18m
+my-job-vwzcc                     0/1     Completed   0          3h18m
+PS C:\Users\prath> kubectl delete pod my-deployment-79bd6f4ccf-7p4ng
+pod "my-deployment-79bd6f4ccf-7p4ng" deleted
+PS C:\Users\prath> kubectl get pods
+NAME                             READY   STATUS      RESTARTS   AGE
+hello-cronjob-29264302-gfxm5     0/1     Completed   0          5m41s
+hello-cronjob-29264304-lvwcv     0/1     Completed   0          3m41s
+hello-cronjob-29264306-8hm5q     0/1     Completed   0          101s
+my-deployment-79bd6f4ccf-km7br   1/1     Running     0          4s
+my-deployment-79bd6f4ccf-tmdcg   1/1     Running     0          3h18m
+my-job-vwzcc                     0/1     Completed   0          3h18m
+
+
+
+kubectl delete pod my-deployment-79bd6f4ccf-tmdcg --force
+
+kubectl describe deploy
+
+kubectl describe deployment
+
+THERE ARE ALSO DISTROLESS IMAGES THAT WE CAN USE TO MAKE IMAGE OR CONTAINER FOR OUR APPLICATION. DISTROLESS IMAGES ARE MORE SECURE SINCE THERE ARE NO PACKAGE-MANAGER , NO BASH SO LESS ACCESSIBILITY AND VERY SECURE.
+
+DIFFERENT LINUX-NAMESPACES : cgroup, user, mnt, uts, ipc, pid, net inside the container
+
+container isolation means one container isolated from another container through a mechanism i.e. linux namespaces + control groups and layering mechanism
+
+control-groups : every container takes memory cpu space etc so this control-groups manages cpu, memory(ram), block I/O
+
+WHEN CONTAINER IS CREATED FOR AN APPLICATION THEN.. EVERY CONTAINER IS ISOLATED AND IMAGE FROM WHICH CONTAINER IS CREATED IS PULLED LOCALLY AND SHARED SAME BASE IMAGE
+
+SO FROM SAME BASE IMAGE WE ARE CREATING SUPPOSE 4 CONTAINERS AND ALL OF THE CONTAINERS ARE ISOLATED FROM ONE ANOTHER FOR THAT THERE IS A LAYERING FILE.
+1. UNIFIED VIEW
+2. SHARED STACK
+3. EACH CONTAINER HAS WRITABLE LAYER ( IT MEANS CONTAINER C1 HAS HTML FILE AND IF WE CHANGE HTML FILE OF CONTAINER C1 IT WON'T AFFECT CONTAINER C2 HTML FILE) SO EVERY IMAGE GETS THEIR OWN WRITABLE LAYER WHERE IT CAN KEEP THE CHANGES OR WRITE THE CHANGES.
+
+SECURITY IS NOT IN DOCKER AND KUBERNETES. WE HAVE TO DESIGN AND CONFIGURE SECURITY BOTH IN DOCKER AND KUBERNETES.
+
+DOCKER ENGINE DOES NOT START DOCKER CONTAINER.
+
+
+
+
+REQUEST FLOW FROM DOCKER-CLI TO CONTAINER PROCESS ::
+DOCKER-CLI > DOCKER-ENGINE > CONTAINERD > CONTAINERD-SHIM(HIGH-LEVEL RUNTIME) > RUNC (LOW-LEVEL RUNTIME) > CONTAINER PROCESS
+
+RUNC STARTS THE CONTAINER AND EXITS (THIS IS SHORT-LIVED PROCESS)
+
+IF CONTAINER IS RUNNING AND ALL THE PROCESS IS RUNNING OR NOT AND TAKE THE LOGS THESE THINGS HANDLE BY CONTAINERD-SHIM
+
+
+CNCF : CLOUD NATIVE COMPUTING FOUNDATION
+
+DOCKER-SWARM IS ALSO CONTAINER ORCHESTRATOR
+KUBERNETES IS ALSO CONTAINER ORCHESTRATOR
+
+
+
+KUBERNETES IS HIGHLY EXTENSIBLE
+FEATURES OF KUBERNETES LIKE AUTOSCALING, SELF-HEALING, MONITORING, SCHEDULING, FLEXIBILITY( HIGHLY EXTENSIBLE) ETC...
+
+WHEN WE INSTALL CROSSPLANE ON KUBERNETES WE CAN CONNECT KUBERNETES WITH CLOUD
+
+WHEN WE INSTALL KUBEVIRT ON KUBERNETES WE CAN ORCHESTRATE OR MANAGE VIRTUAL-MACHINES ALSO NOT ONLY CONTAINERS OF APPLICATION.
+
+
+
+docker run -d --name my-nginx-container --memory 512m --cpus 1 nginx
+
+
+
+
+ps aux | grep '[n]ginx' | sort -n -k 2 | head -n 1 | awk '{print $2}'
+
+🐧 If You're Using WSL (Windows Subsystem for Linux)
+This:
+Lists all processes
+Filters for nginx (avoids matching the grep itself)
+Sorts by memory usage (column 4)
+Gets the PID of the lowest-memory nginx process
+
+
+
+LISTING ALL THE NAMESPACES OF A LINUX-PROCESS THROUGH PROCESS-ID ::
+lsns -p process-id
+ex : lsns -p 2847
+
+THIS SHOWS THAT CONTAINER IS A LINUX PROCESS AND THAT PROCESS USES LINUX-NAMESPACES TO RUN ITSELF.
+
+
+
+
+
+IN KILLERCODE :::
+
+ubuntu:/sys/fs/cgroup$ df -h /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1        19G  5.0G   14G  27% /
+ubuntu:/sys/fs/cgroup$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS     NAMES
+a6dea6a358b4   nginx     "/docker-entrypoint.…"   6 minutes ago   Up 6 minutes   80/tcp    my-nginx-container
+ubuntu:/sys/fs/cgroup$ ps aux | grep '[n]ginx' | sort -n -k 2 | head -n 1 | awk '{print $2}'
+1842
+ubuntu:/sys/fs/cgroup$ lsns -p 1842
+        NS TYPE   NPROCS   PID USER COMMAND
+4026531834 time      121     1 root /sbin/init
+4026531837 user      121     1 root /sbin/init
+4026532362 mnt         2  1842 root nginx: master process nginx -g daemon off;
+4026532363 uts         2  1842 root nginx: master process nginx -g daemon off;
+4026532364 ipc         2  1842 root nginx: master process nginx -g daemon off;
+4026532365 pid         2  1842 root nginx: master process nginx -g daemon off;
+4026532366 cgroup      2  1842 root nginx: master process nginx -g daemon off;
+4026532367 net         2  1842 root nginx: master process nginx -g daemon off;
+
+
+
+
+DOCKER-CONTAINER IS LINUX PROCESS THAT ISOLATES FROM EACH-OTHER USING LINUX-NAMESPACES (ALL LINUX-NAMESPACES) LIKE GIVEN ABOVE LINUX-NAMESPACES
+i.e. cid,cgroup,net, ipc, uts, mnt, user, time. BETWEEN DOCKER-CONTAINER THERE IS NETWORKING i.e. DOCKER-NETWORKING
+
+
+
+
+controlplane:~$ kubectl run mynginx --image=nginx
+pod/mynginx created
+controlplane:~$ kubectl get all
+NAME          READY   STATUS              RESTARTS   AGE
+pod/mynginx   0/1     ContainerCreating   0          7s
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   6d12h
+controlplane:~$ kubectl get pods -owide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE           NOMINATED NODE   READINESS GATES
+mynginx   1/1     Running   0          16s   192.168.0.6   controlplane   <none>           <none>
+
+
+
+
+controlplane:~$ kubectl get pods -A
+NAMESPACE            NAME                                      READY   STATUS    RESTARTS       AGE
+default              mynginx                                   1/1     Running   0              2m20s
+kube-system          calico-kube-controllers-fdf5f5495-8jbqm   1/1     Running   1 (139m ago)   6d12h
+kube-system          canal-rtfc5                               2/2     Running   2 (139m ago)   6d12h
+kube-system          coredns-6ff97d97f9-2rxsf                  1/1     Running   1 (139m ago)   6d12h
+kube-system          coredns-6ff97d97f9-85m5c                  1/1     Running   1 (139m ago)   6d12h
+kube-system          etcd-controlplane                         1/1     Running   1 (139m ago)   6d12h
+kube-system          kube-apiserver-controlplane               1/1     Running   1 (139m ago)   6d12h
+kube-system          kube-controller-manager-controlplane      1/1     Running   1 (139m ago)   6d12h
+kube-system          kube-proxy-7kdz8                          1/1     Running   1 (139m ago)   6d12h
+kube-system          kube-scheduler-controlplane               1/1     Running   1 (139m ago)   6d12h
+local-path-storage   local-path-provisioner-5c94487ccb-gmwjg   1/1     Running   1 (139m ago)   6d12h
+
+
+
+
+
+COMMAND crictl ps SHOWS WORKLOAD ::
+
+controlplane:~$ ssh controlplane
+Last login: Mon Feb 10 22:06:42 2025 from 10.244.0.131
+controlplane:~$ ls
+filesystem
+controlplane:~$ crictl ps
+CONTAINER           IMAGE               CREATED             STATE               NAME                      ATTEMPT             POD ID              POD                                       NAMESPACE
+03431d950d1e2       ad5708199ec7d       3 minutes ago       Running             mynginx                   0                   fa352aabb1dca       mynginx                                   default
+1726a54ba8d10       3461b62f768ea       2 hours ago         Running             local-path-provisioner    1                   dce9ec2d7b505       local-path-provisioner-5c94487ccb-gmwjg   local-path-storage
+505a87a2e9fd9       f9c3c1813269c       2 hours ago         Running             calico-kube-controllers   1                   05f0c3b3442bd       calico-kube-controllers-fdf5f5495-8jbqm   kube-system
+a95ef57963d6e       1cf5f116067c6       2 hours ago         Running             coredns                   1                   fa1654310d91b       coredns-6ff97d97f9-2rxsf                  kube-system
+47ec14da0eb35       1cf5f116067c6       2 hours ago         Running             coredns                   1                   6e40bcc918348       coredns-6ff97d97f9-85m5c                  kube-system
+7da9303a060fc       e6ea68648f0cd       2 hours ago         Running             kube-flannel              1                   92448fc160687       canal-rtfc5                               kube-system
+8356185748c8a       75392e3500e36       2 hours ago         Running             calico-node               1                   92448fc160687       canal-rtfc5                               kube-system
+e0b0cf465227d       661d404f36f01       2 hours ago         Running             kube-proxy                1                   2ca15ad2132c1       kube-proxy-7kdz8                          kube-system
+5910f21b62c36       499038711c081       2 hours ago         Running             etcd                      1                   d814941fe0437       etcd-controlplane                         kube-system
+d2ae8385f2e12       ff4f56c76b82d       2 hours ago         Running             kube-controller-manager   1                   685d3a37a43ca       kube-controller-manager-controlplane      kube-system
+add36aa8f4050       cfed1ff748928       2 hours ago         Running             kube-scheduler            1                   5eb374818c817       kube-scheduler-controlplane               kube-system
+8956ead848398       ee794efa53d85       2 hours ago         Running             kube-apiserver            1                   47548e69024a7       kube-apiserver-controlplane               kube-system
+controlplane:~$
+
+
+
+
+controlplane:~$ ps aux | grep '[n]ginx' | sort -n -k 2 | head -n 1 | awk '{print $2}'
+70024
+controlplane:~$ ps aux | grep '[myn]ginx' | sort -n -k 2 | head -n 1 | awk '{print $2}'
+70024
+
+controlplane:~$ lsns -p 70024
+        NS TYPE   NPROCS   PID USER  COMMAND
+4026531834 time      204     1 root  /sbin/init
+4026531837 user      202     1 root  /sbin/init
+4026532785 net         3 69875 65535 /pause
+4026532846 uts         3 69875 65535 /pause
+4026532847 ipc         3 69875 65535 /pause
+4026532849 mnt         2 70024 root  nginx: master process nginx -g daemon off;
+4026532850 pid         2 70024 root  nginx: master process nginx -g daemon off;
+4026532851 cgroup      2 70024 root  nginx: master process nginx -g daemon off;
+
+
+YOU CAN OBSERVE SAME LINUX-NAMESPACES
+
+
+95% OF THE CLUSTERS ARE NOW BUILT WITH KUBERNETES WITH CONTAINERD
+
+MULTIPLE CONTAINER CAN BE RUN IN A POD
+
+SEE ABOVE PAUSE IS FOR RESOURCE HANDLING . SEE ABOVE THAT THREE LINUX-NAMESPACES  i.e. net, uts, ipc HAS TAKEN BY pause . PAUSE IS THE PROCESS INSIDE THE KUBERNETES WHICH IS ASSOCIATED WITH CONTAINERS WHICH IS NAMESPACE HOLDER PROCESS-MANAGEMENT ,SIGNAL FACILITATE AND HANDLE RESOURCES
+
+WINTHIN THE SAME POD net NAMESPACE IS SHARED WITH ALL THE CONTAINERS
+
+PAUSE HANDLES RESOURCE HANDLING , COMMUNICATE WITH THE LOCAL-HOST, BETWEEN THE CONTAINERS
+
+ACTUALLY PAUSE CONTAINER RUNS FIRST AND THEN USER-DEFINED CONTAINERS
+
+
+
+KUBERNETES TOOLING : KUBEADM, KUBECTL, KOPS, KSCTL, KUBELET, KIND(CHECK) etc
+
+KUBEADM, KOPS, KSCTL THESE HELPS IN CREATING KUBERNETES CLUSTER . SUCH KUBERNETES CLUSTER ARE SELF-MANAGED KUBERNETES CLUSTER.
+
+CLOUD PROVIDERS HAVE THEIR OWN KUBERNETES LIKE EKS (AMAZON), AKS(AZURE), GKE(GOOGLE) ,DKE (DIGITAL), CIVO KUBERNETES. SO EVERY CLOUD PROVIDER HAS THEIR OWN KUBERNETES DISTRIBUTION.
+IN CLOUD WE DON'T HAVE TO INSTALL KUBERNETES WE JUST RUN SOME COMMANDS AND CREATE OUR OWN KUBERNETES CLUSTER.
+
+KUBECTL IS THE COMMAND LINE UTILITY TO INTERACT WITH KUBERNETES CLUSTER
+
+
+
+
+
+
+cat .\.kube\config
+
+cat ~/.kube/config
+
+THIS IS USEFUL WHEN KUBECTL IS USED TO INTERACT WITH KUBERNETES CLUSTER
+
+
+
+WHEN WE RUN "kubectl run nginx --image=nginx" THEN IT WOULD DO THE REST API-CALL TO API-SERVER IN CONTROL-PLANE-NODE AND API-SERVER CHECKS THREE THINGS
+AUTHENTICATION, AUTHORIZATION, ADMISSION SO API-SERVER IS CHECKING FOR THE REQUEST IS VALID OR NOT AND THE USER WHO REQUESTED IS AUTHORIZED OR NOT AND CHECKS IF ANY POLICY IS VIOLATED BY USER ACTION OR NOT. (NOW ETCD KNOWS REQUEST HAS COME SO WORKLOAD IS THERE AND NEEDS TO RUN). THE WORKLOAD IS GOING TO RUN ON WORKER-NODE. THIS WORKER-NODE IS OBVIOUSLY VIRTUAL-MACHINE
+WHICH CONSUMES RAM, CPU SO THE WORKLOAD WE RAN IT HAS ITS REQUIREMENTS LIKE MEMORY, RAM, CPU , REQUEST AND RESOURCE IT NEEDS , TAINT, TOLERATIONS, AFFINITY, NODE-SELECTOR
+CHECKING ALL THE REQUIREMENTS AND AVAILABLE BEST FIT WORKER-NODE SCHEDULER CHOSE THE BEST FIT WORKER-NODE AND WHEN SCHEDULER CHOSE THE WORKER-NODE THEN THE POD SPEC NODE NAME FIELD IS UPDATED AND TELLS API-SERVER THAT THIS WORKLOAD WILL BE RUN ON THE CHOSEN WORKER-NODE'S POD AND THIS INFORMATION IS UPDATED AND PERSISTED INTO ETCD. ETCD STORES ALL THE INFORMATION ABOUT STATE OF ALL THE CLUSTER COMPONENTS OF THE KUBERNETES AND WORKLOADS. ETCD IS KEY-VALUE DATASTORE.
+
+SUPPOSE WE SAY THAT WE NEED TO RUN 5 REPLICAS OF A DEPLOYMENT THEN IT WILL BE STORED IN ETCD.
+
+KUBELET IS ALWAYS IN COMMUNICATION WITH THE API-SERVER CHECKING IF THERE IS ANY WORKLOAD TO RUN. API-SERVER GIVES WORKLOAD TO KUBELET AS PER THE SCHEDULER. KUBELET TELLS CONTAINERD TO PULL THE IMAGE FROM THE CONTAINER REGISTRY AND ATTACH THE NETWORK INTERFACE AND ATTACH IF THERE IS ANY CSI-DRIVER IS REQUIRED.
+KUBELET IS RESPONSIBLE FOR RUNNING THE WORKLOAD.
+
+KUBELET TALKS TO CONTAINERD AND IMAGE IS PULLED AND RUN THE APPLICATION. STATUS IS UPDATED TO KUBELET AND KUBE-PROXY DOES MAINTAINS NETWORKING RULES AS PER IP-TABLES THUS WORKLOAD IS RUNNING PASSING THE HEALTH CHECK-PASS AND INFORM BACK THAT POD IS IN RUNNING STATE TO CONTROL-PLANE-NODE(MASTER) AND WHEN POD IS RUNNING STATE IT IS PERSISTED IN ETCD . AT CONTAINERD THERE IS CSI(CONTAINER-STORAGE INTERFACE), CRI(CONTAINER-RUNTIME INTERFACE), CNI(CONTAINER-NETWORKING INTERFACE)
+APPLICATION WILL BE INSTALLED AT INTERFACE
+
+
+IN OUR KUBERNETES CLUSTER THERE IS ANY NETWORKING SOLUTION IS INSTALLED THAT IS WHY CLUSTER IS RUNNING LIKE FLANNEL, CALICO, CILIUM
+
+
+AND MAYBE THERE IS CSI-DRIVER LIKE LOCAL-PATH-PROVISIONER, LONGHORN, OPENEBS, POTWORKS, MYSTORE( THESE ARE ALL OPEN SOURCE PROJECTS)
+
+
+KUBE-PROXY MAINTAINS NETWORK RULES ON NODES. THESE NETWORK RULES ALLOW NETWORK COMMUNICATION TO YOUR PODS FROM NETWORK SESSIONS INSIDE OR OUTSIDE OF YOUR CLUSTER.
+MEANS POD TO POD COMMUNICATION, NODE TO NODE COMMUNICATION , POD TO NODE OUTSIDE COMMUNICATION FOLLOWING THE IP-TABLES OR IPVS(THIS IS LINUX CONCEPT FOR NETWORKING)
+SO   KUBE-PROXY HANDLES ALL THESE IP-TABLES RULES AND IVPS IN THE WORKER-NODE
+
+FINALLY POD RUNS. POD IS THE SMALLEST UNIT. CONTAINER RUNS IN THE POD IN KUBERNETES CLUSTER . IN ONE POD MULTIPLE CONTAINERS CAN ALSO RUN THAT WE CALL MULTI-CONTAINER POD
+
+
+
+
+REPLICASET, DEPLOYMENT, JOB, STATEFULSET, DAEMONSET THEY ARE CONTROLLERS OR CONTROL LOOPS. THESE ARE KUBERNETES OBJECTS
+WE CAN CREATE THESE KUBERNETES OBJECTS AND THEY ARE MANAGED BY CONTROLLER-MANAGER. CONTROL-MANAGER IS POD WHICH MANAGES ALL THESE KUBERNETES OBJECTS (K8 OBJECTS)
+SUPPOSE IF I WANT 5 REPLICAS OF MY APP THEN ITS THE CONTROL-MANAGERS MANAGES AND MAINTAINS 5 REPLICAS.
+
+
+CCM (CLOUD-CONTROL-MANAGER) WHENEVER WE MAKE OR CREATE KUBERNETES CLUSTER ON CLOUD PROVIDER THEN WE USE SOME ADDITIONAL THINGS WHICH ARE CLOUD DEPENDENT AND THEY ARE NOT IN KUBERNETES  THEY ARE LIKE LOADBALANCER , PUBLIC-IP
+LIKE VOLUME CREATION, DATABASE STORAGE , DATA-STORAGE THEN WE CREATE PERSISTENT VOLUME AND WHICH IS MANAGED AND CONTROLLED WHERE THIS VOLUME WILL BE CREATED AND CONTROLLED IN CLOUD IS ALL DONE WITH CLOUD-CONTROL-MANAGER (CCM)
+
+PODS ARE WORKLOADS
+
+
+
+kubectl config view
+
+kubectl config get-contexts
+
+kubectl config use-contexts docker-desktop
+
+
+
+
+
+CREATING USER( USER OTHER THAN ADMIN WITH RESTRICTED ACCES IN KUBERNETES)
+
+## CREATE CSR
+openssl genrsa -out raj.key 2048
+openssl req -new -key raj.key -out raj.csr -subj "/CN=raj/0=group1"
+
+## SIGN CSE WITH KUBERNETES CA | GENERATED BASE64 ENCODED CERTIFICATE
+cat raj.csr | base64 | tr -d '\n'
+
+
+vi csr.yaml
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: saiyam
+spec:
+  request: BASE64_CSR
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth
+
+
+
+kubectl apply -f csr.yaml
+
+## APPROVE USING CERTIFICATE BASICALLY KUBECTL CERTIFICATE AUTHORITY
+kubectl certificate approve saiyam
+
+kubectl get csr saiyam -o jsonpath='{.status.certificate}' | base64 --decode > saiyam.crt
+
+ls ::
+csr.yaml filesystem saiyam.crt saiyam.csr saiyam.key snap
+
+
+
+NOW WE CREATE ROLE AND ROLE-BINDING :
+## HERE WE ARE CREATING A NEW ROLE WITH DEFINED OR SPECIFIED ACCESS OR TYPE OF ACCESS
+## IN ROLE-BINDING WE ARE BINDING A USER WITH THAT NEWLY CREATED ROLE WHICH HAS "get watch list" ACCESS TO POD FOR USER SAIYAM
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get","watch","list"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: read-pods
+  namespace: default
+subjects:
+- kind: User
+  name: saiyam
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
+
+
+  cat << EOF | kubectl apply -f -
+  file above content ::::
+  EOF
+
+
+or
+
+vi role.yaml
+
+
+role and role-binding : we are telling kubernetes that this  user named saiyam assign a role of pod-reader
+
+and pod-reader can only get, watch and list against pods only and nothing else it can do in kubernetes cluster
+
+kubectl apply -f role.yaml
+
+
+# SETUP KUBECONFIG
+### SETTTING UP CREDENTIALS ::: TELLING KUBECONFIG THAT A NEW USER IS THERE AND USE SPECIFIC CLIENT CERTIFICATE AND CLIENT KEY
+kubectl config set-credentials saiyam --client-certificate=saiyam.crt --client-key=saiyam.key
+response : User "saiyam" set.
+
+
+
+kubectl config get-contexts
+
+### CREATING AND SETTING UP CONTEXT WHICH WE WANT TO USE IT WITH KUBECONFIG
+kubectl config set-context saiyam-context --cluster=kubernetes --namespace=default --user=saiyam
+
+kubectl config get-contexts
+
+
+kubectl config use-context saiyam-context
+
+##OTHER THAN KUBERNETES-ADMIN YOU WILL SEE THAT A NEW USER IS ADDED THERE FOR WHICH CLIENT-CERTIFICATE AND CLIENT-KEY WILL BE PICKUP FROM SPECIFIC LOCATION AND FILE i.e. /root/saiyam.crt and /root/saiyam.key
+cat ~/.kube/config
+
+
+
+
+
+### Merging multiple KubeConfig files
+### IN A CURRENT TERMINAL OR SHELL SETTING THIS WOULD LEAD TO FETCH SPECIFIED KUBE-CONFIG FILE RATHER THAN BASE KUBE-CONFIG FILE
+export KUBECONFIG=/path/to/first/config:/path/to/second/second/config:/path/to/third/config
+
+
+
+## PURPOSE OF CREATING NEW USER IS THAT WE CANNOT GIVE ADMIN-USER TO EVERYONE WE HAVE TO CREATE DIFFERENT USERS AND DISTRIBUTE THEM INTO MY TEAM THIS WAY WE CAN DECIDE WHICH PART OF CLUSTER IS ACCESSIBLE TO WHICH USER etc
+
+## AFTER SELECTING A NEW CONTEXT TO SEE THAT NEW USER CAN ACCESS DEPLOY (BUT IT WILL GIVE ERROR: IT HAS ONLY ACCESS TO POD)
+kubectl get deploy
+
+
+
+# THIS WILL SELECT THE SPECIFIED KUBE-CONFIG FILE TO RUN THIS COMMAND ::
+kubectl get nodes --kubeconfig ~/.kube/config
+
+
+## USE THIS COMMAND TO SWITCH BETWEEN MULTIPLE CONTEXTS
+kubectx (explore the usage of this command and list important usages of this command WITH EXAMPLES)
+
+
+
+IF WE RUN COMMAND OR YAML FILE IN BOTH WAYS API-SERVER GETS JSON FILE AND WHICHEVER WAY WE CHOOSE WE ARE MAKING REST-API CALLS. API-SERVER IS SOFTWARE UTILITY ( ENDPOINTS WE CAN ACCES THEM THROUGH REST-API CALLS)
+
+
+
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+kubectl run demo --image=nginx --dry-run=client -oyaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: demo
+  name: demo
+spec:
+  containers:
+  - image: nginx
+    name: demo
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+
+
+
+
+
+
+
+kubectl create deploy demo --image=nginx --dry-run=client -oyaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: demo
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: demo
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        resources: {}
+status: {}
+
+
+
+
+
+
+Create a file deploy.json
+```
+kubectl create deployment nginx --image=nginx --dry-run=client -o json > deploy.json
+kubectl run nginx --image=nginx --dry-run=client -o json
+
+OR
+
+
+GVK : Group Version Kind
+GVR : Group Version Resources
+
+IN ABOVE COMMAND OUTPUT WE CAN SEE THAT DEPLOYMENT IS A KIND. WHEN WE RUN YAML FILE THEN IT IS KIND
+
+AND WHEN IT IS IN REST-API CALL THEN IT IS RESOURCES (RESOUCE IS PLURAL OF KIND).
+
+
+IN KUBERNETES THERE ARE LOTS OF GROUPS FOR EXAMPLE IN KUBERNETES THERE IS NETWORKING GROUP AND IN NETWORKING GROUP NETWORKING RELATED KUBERNETES OBJECTS COMES LIKE INGRESS, NETWORK-POLICY
+
+POD IS IN CORE GROUP AND IT IS EMPTY.
+
+DEPLOYMENT IS apps PART . apps IS GROUP AND IN KUBERNETES INSIDE GROUPS THERE ARE RESOURCES LIKE FROM ABOVE THE GIVEN apiVersion APPS IS GROUP
+apiVersion: apps/v1
+
+HERE FROM ABOVE apiVersion is only v1 BECAUSE IT IS CORE GROUP MEMBER. CORE GROUP MEANS CORE-SERVICES
+apiVersion: v1
+
+
+NO GROUP IN POD. POD IS CORE GROUP MEMBER SO VERSION V1
+SERVICE IS CORE GROUP MEMBER AND KIND IS SERVICE
+
+RESOURCES (REST-API-ENDPOINT ) SERVICES POD
+
+NETWORKING POLICY : GROUP IS NETWORKING(networking.k8s.io)
+AND VERSION IS V1
+RESOURCE IS NETWORK POLICIES
+
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+### CREATING serviceaccount WITH NAME sam AND NAMESPACE DEFINED IS default
+kubectl create serviceaccount sam --namespace default
+
+
+### CREATE ROLE FOR CLUSTER WITH NAME sam-clusteradmin-binding AND PROVIDE ROLE TO CLUSTER-ADMIN AND ASSIGN ROLE BINDING TO THE ABOVE CREATED serviceaccount
+kubectl create clusterrolebinding sam-clusteradmin-binding --clusterrole=cluster-admin --serviceaccount=default:sam
+
+
+## creating token
+kubectl create token sam
+TOKEN=outputfromabove
+
+
+
+
+## API-SERVER :
+APISERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+
+OBSERVE ::
+controlplane:~$ kubectl config view
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://172.30.1.2:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubernetes-admin
+  name: kubernetes-admin@kubernetes
+current-context: kubernetes-admin@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate-data: DATA+OMITTED
+    client-key-data: DATA+OMITTED
+
+
+HERE INSIDE CLUSTERS: CLUSTER : SERVER VALUE IS API-SERVER IP-ADDRESS
+
+controlplane:~$ echo $APISERVER
+https://172.30.1.2:6443
+controlplane:~$
+
+
+
+
+## MAKING REST-API CALL TO API-SERVER
+
+### SENDING CURL COMMAND REQUEST(REST-API CALL) HERE WE ARE SENDING GET REQUEST TO API-SERVER ($APISERVER/apis/apps/v1/namespaces/default/deployments)
+### apps IS A GROUP
+### VERSION IS v1
+### NAMESPACES IS default
+### RESOURCE IS deployments (SINCE RESOURCES ARE PLURAL SO deployments IS USED INSTEAD OF deployment)
+curl -X GET $APISERVER/apis/apps/v1/namespaces/default/deployments -H "Authorization: Bearer $TOKEN" -k
+
+NOTE TO REMEMBER ::
+(WHEN WE CREATE IN YAML FILE THEN IN kind WE DEFINE AS pod OR service OR deployment NOT AS pods OR services OR deploymentS
+RESOURCES ARE PLURAL SO WHEN WE MAKE RESP-API CALLS THEN WE USE OR DEFINE AS i.e. deployments or services or pods
+)
+
+
+
+
+### BELOW REST-API CALL LISTS ALL API'S
+
+curl -X GET $APISERVER/apis -H "Authorization: Bearer $TOKEN" -k
+
+controlplane:~$ curl -X GET $APISERVER/apis -H "Authorization: Bearer $TOKEN" -k
+{
+  "kind": "APIGroupList",
+  "apiVersion": "v1",
+  "groups": [
+    {
+      "name": "apiregistration.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "apiregistration.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "apiregistration.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "apps",
+      "versions": [
+        {
+          "groupVersion": "apps/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "apps/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "events.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "events.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "events.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "authentication.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "authentication.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "authentication.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "authorization.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "authorization.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "authorization.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "autoscaling",
+      "versions": [
+        {
+          "groupVersion": "autoscaling/v2",
+          "version": "v2"
+        },
+        {
+          "groupVersion": "autoscaling/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "autoscaling/v2",
+        "version": "v2"
+      }
+    },
+    {
+      "name": "batch",
+      "versions": [
+        {
+          "groupVersion": "batch/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "batch/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "certificates.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "certificates.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "certificates.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "networking.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "networking.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "networking.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "policy",
+      "versions": [
+        {
+          "groupVersion": "policy/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "policy/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "rbac.authorization.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "rbac.authorization.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "rbac.authorization.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "storage.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "storage.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "storage.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "admissionregistration.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "admissionregistration.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "admissionregistration.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "apiextensions.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "apiextensions.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "apiextensions.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "scheduling.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "scheduling.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "scheduling.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "coordination.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "coordination.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "coordination.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "node.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "node.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "node.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "discovery.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "discovery.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "discovery.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "flowcontrol.apiserver.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "flowcontrol.apiserver.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "crd.projectcalico.org",
+      "versions": [
+        {
+          "groupVersion": "crd.projectcalico.org/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "crd.projectcalico.org/v1",
+        "version": "v1"
+      }
+    }
+  ]
+
+
+
+### OBSERVE THAT IN BELOW COMMANDS RESPONSE IN RESULT THERE IS "namespaced" IF IT IS TRUE THEN WE HAVE TO SPECIFY NAMESPACE TO MAKE REST-API CALL FOR THAT REQUESTING THAT RESOURCES
+### FOR EXAMPLE :: curl -X GET $APISERVER/apis/apps/v1/namespaces/default/daemonsets -H "Authorization: Bearer $TOKEN" -k
+controlplane:~$ curl -X GET $APISERVER/apis/apps/v1 -H "Authorization: Bearer $TOKEN" -k
+{
+  "kind": "APIResourceList",
+  "apiVersion": "v1",
+  "groupVersion": "apps/v1",
+  "resources": [
+    {
+      "name": "controllerrevisions",
+      "singularName": "controllerrevision",
+      "namespaced": true,
+      "kind": "ControllerRevision",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "storageVersionHash": "85nkx63pcBU="
+    },
+    {
+      "name": "daemonsets",
+      "singularName": "daemonset",
+      "namespaced": true,
+      "kind": "DaemonSet",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "shortNames": [
+        "ds"
+      ],
+      "categories": [
+        "all"
+      ],
+      "storageVersionHash": "dd7pWHUlMKQ="
+    },
+    {
+      "name": "daemonsets/status",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "DaemonSet",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "deployments",
+      "singularName": "deployment",
+      "namespaced": true,
+      "kind": "Deployment",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "shortNames": [
+        "deploy"
+      ],
+      "categories": [
+        "all"
+      ],
+      "storageVersionHash": "8aSe+NMegvE="
+    },
+    {
+      "name": "deployments/scale",
+      "singularName": "",
+      "namespaced": true,
+      "group": "autoscaling",
+      "version": "v1",
+      "kind": "Scale",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "deployments/status",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "Deployment",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "replicasets",
+      "singularName": "replicaset",
+      "namespaced": true,
+      "kind": "ReplicaSet",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "shortNames": [
+        "rs"
+      ],
+      "categories": [
+        "all"
+      ],
+      "storageVersionHash": "P1RzHs8/mWQ="
+    },
+    {
+      "name": "replicasets/scale",
+      "singularName": "",
+      "namespaced": true,
+      "group": "autoscaling",
+      "version": "v1",
+      "kind": "Scale",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "replicasets/status",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "ReplicaSet",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "statefulsets",
+      "singularName": "statefulset",
+      "namespaced": true,
+      "kind": "StatefulSet",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "shortNames": [
+        "sts"
+      ],
+      "categories": [
+        "all"
+      ],
+      "storageVersionHash": "H+vl74LkKdo="
+    },
+    {
+      "name": "statefulsets/scale",
+      "singularName": "",
+      "namespaced": true,
+      "group": "autoscaling",
+      "version": "v1",
+      "kind": "Scale",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "statefulsets/status",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "StatefulSet",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    }
+  ]
+
+
+
+
+
+
+
+ kubectl create deployment nginx --image=nginx --dry-run=client -o json > deploy.json
+ ### AFTER ABOVE COMMAND WE CAN EITHER MAKE A REST-API CALL TO CREATE DEPLOYMENT OR WE CAN RUN CLI COMMAND LIKE BELOW ::
+ kubectl run deploy nginx --image=nginx --dry-run=client -o json
+Create Deployment
+curl -X POST $APISERVER/apis/apps/v1/namespaces/default/deployments -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d @deploy.json -k
+
+
+
+### REMEMBER ABOVE WE DISCUSSED THAT PODS AND SERVICES IS IN CORE GROUP SO DIRECTLY COME UNDER api SO WE DID NOT HAVE TO SPECIFY GROUP LIKE ABOVE WE DEFINED apps IN CURL COMMAND AFTER apis
+List pods
+curl -X GET $APISERVER/api/v1/namespaces/default/pods -H "Authorization: Bearer $TOKEN" -k
+SO AFTER $APISERVER THEN api WE DID NOT DEFINE ANY GROUP AND DIRECTLY SPECIFY VERSION i.e. v1 THEN DEFAULT NAMESPACE SINCE THIS IS RESOURCE AND RESOUCES ARE PLURAL WE USE pods IN CURL REQUEST
+
+
+
+
+## BECAUSE OF PROXY :: WE CAN MAKE A REST-API CALL ON HOST LIKE THIS WITHOUT PASSING AUTHENTICATION TOKEN
+kubectl proxy
+curl localhost:8001/apis
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+YAML, POD, POD LIFECYCLE, INIT CONTAINERS, SIDECAR CONTAINERS
+
+
+## LISTING NAMESPACE
+PS C:\Users\prath> kubectl get ns
+NAME                 STATUS   AGE
+default              Active   26h
+kube-node-lease      Active   26h
+kube-public          Active   26h
+kube-system          Active   26h
+local-path-storage   Active   26h
+
+
+
+
+controlplane:~$ kubectl create namespace bootcamp
+namespace/bootcamp created
+controlplane:~$ kubectl get ns
+NAME                 STATUS   AGE
+bootcamp             Active   7s
+default              Active   11d
+kube-node-lease      Active   11d
+kube-public          Active   11d
+kube-system          Active   11d
+local-path-storage   Active   11d
+
+
+
+controlplane:~$ kubectl get pod --namespace bootcamp
+No resources found in bootcamp namespace.
+controlplane:~$ kubectl get pod -n bootcamp
+No resources found in bootcamp namespace.
+controlplane:~$ kubectl create deploy mynginx --image=nginx --dry-run=client
+deployment.apps/mynginx created (dry run)
+controlplane:~$ kubectl run mynginx --image=nginx --dry-run=client
+pod/mynginx created (dry run)
+controlplane:~$ kubectl get pods
+No resources found in default namespace.
+controlplane:~$ kubectl get nodes
+NAME           STATUS   ROLES           AGE   VERSION
+controlplane   Ready    control-plane   11d   v1.33.2
+node01         Ready    <none>          11d   v1.33.2
+controlplane:~$ kubectl get deployment
+No resources found in default namespace.
+controlplane:~$ kubectl run mynginx --image=nginx
+pod/mynginx created
+controlplane:~$ kubectl get nodes
+NAME           STATUS   ROLES           AGE   VERSION
+controlplane   Ready    control-plane   11d   v1.33.2
+node01         Ready    <none>          11d   v1.33.2
+controlplane:~$ kubectl get pods
+NAME      READY   STATUS    RESTARTS   AGE
+mynginx   1/1     Running   0          11s
+controlplane:~$ kubectl get pods -n bootcamp
+No resources found in bootcamp namespace.
+controlplane:~$ kubectl run mynginx --image=nginx -n bootcamp
+pod/mynginx created
+controlplane:~$ kubectl get pods -n bootcamp
+NAME      READY   STATUS    RESTARTS   AGE
+mynginx   1/1     Running   0          4s
+controlplane:~$ kubectl get pods -A
+NAMESPACE            NAME                                      READY   STATUS    RESTARTS      AGE
+bootcamp             mynginx                                   1/1     Running   0             17s
+default              mynginx                                   1/1     Running   0             102s
+kube-system          calico-kube-controllers-fdf5f5495-8jbqm   1/1     Running   2 (18m ago)   11d
+kube-system          canal-5q8x5                               2/2     Running   2 (18m ago)   11d
+kube-system          canal-hvvtk                               2/2     Running   2 (18m ago)   11d
+kube-system          coredns-6ff97d97f9-gq4nd                  1/1     Running   1 (18m ago)   11d
+kube-system          coredns-6ff97d97f9-hcn7j                  1/1     Running   1 (18m ago)   11d
+kube-system          etcd-controlplane                         1/1     Running   2 (18m ago)   11d
+kube-system          kube-apiserver-controlplane               1/1     Running   2 (18m ago)   11d
+kube-system          kube-controller-manager-controlplane      1/1     Running   2 (18m ago)   11d
+kube-system          kube-proxy-7kdz8                          1/1     Running   2 (18m ago)   11d
+kube-system          kube-proxy-lg8cx                          1/1     Running   1 (18m ago)   11d
+kube-system          kube-scheduler-controlplane               1/1     Running   2 (18m ago)   11d
+local-path-storage   local-path-provisioner-5c94487ccb-gmwjg   1/1     Running   2 (18m ago)   11d
+controlplane:~$ kubectl get pods --namespace bootcamp
+NAME      READY   STATUS    RESTARTS   AGE
+mynginx   1/1     Running   0          66s
+
+
+
+kubectl describe mynginx(pod name)
+
+kubectl logs mynginx
+
+
+## THIS WILL DO FOLLOW UP LOG TO CHECK AND DEBUG
+kubectl logs -f mynginx
+
+
+kubectl get pods
+kubectl get pods -owide
+
+
+kubectl get pods -oyaml
+
+
+
+https://killercoda.com/kubernetes/scenario/deployment-basics
+
+https://killercoda.com/playgrounds/scenario/kubernetes
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+SIDECAR CONTAINER, QOS, PDB, REQUEST_LIMIT
+
+
+
+RBAC : Role Based Access Control
+
+https://killercoda.com/playgrounds/scenario/kubernetes
+
+
+Ephemeral Container (Troubleshooting)
+Disruption
+Pod Quality of Service
+USer Namespaces
+Downword API
+
+
+docker run ubuntu sleep 1000
+docker inspect ubuntu-image-id
+
+To See ip-address of POD
+kubectl get pod -owide
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+LINUX CONTAINERS, VM CONTAINERS, WINDOWS CONTAINERS (FIND MORE INFO ON LINUX CONTAINERS, VM CONTAINERS AND WINDOWS CONTAINERS TOPICS)
+
+
+
+
+
+=====================================================================================================================
+
+CRICTL COMMAND ::
+
+Commonly Used Commands
+
+Here are some essential crictl commands for managing containers, pods, and images:
+
+Containers
+
+List all containers: crictl ps -a
+
+List running containers: crictl ps
+
+Inspect a container: crictl inspect <container-id>
+
+Start a container: crictl start <container-id>
+
+Stop a container: crictl stop <container-id>
+
+Remove a container: crictl rm <container-id>
+
+Execute a command in a container: crictl exec -it <container-id> <command>
+
+Pods
+
+List all pods: crictl pods
+
+Inspect a pod: crictl inspectp <pod-id>
+
+Run a pod sandbox: crictl runp <pod-config.json>
+
+Stop a pod: crictl stopp <pod-id>
+
+Remove a pod: crictl rmp <pod-id>
+
+Images
+
+List all images: crictl images
+
+Pull an image: crictl pull <image-name>
+
+Remove an image: crictl rmi <image-name>
+
+Inspect an image: crictl inspecti <image-name>
+
+Logs and Debugging
+
+Fetch container logs: crictl logs <container-id>
+
+Stream logs: crictl logs -f <container-id>
+
+View runtime information: crictl info
+
+Advanced Features
+
+Run a container with specific configurations:
+
+crictl run --mount type=bind,source=/host/path,target=/container/path <image-name>
+Filter images:
+
+crictl images --filter 'reference=nginx'
+Checkpoint a running container:
+
+crictl checkpoint --export=/path/to/checkpoint.tar <container-id>
+Key Considerations
+
+Ensure the runtime endpoint is correctly configured to avoid connection issues.
+
+Use the --debug flag for detailed output during troubleshooting.
+
+The crictl tool is runtime-agnostic and supports container runtimes like containerd, cri-o, and cri-dockerd.
+
+crictl is a powerful tool for Kubernetes administrators to manage container runtimes efficiently, especially in environments where Docker is not used.
+
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+In this video we move ahead with Kubernetes concepts
+
+## Kubernetes Architecture
+First we will discuss Kubernetes Architecture and try to understand what happens under the hood when you run `kubectl run nginx --image=nginx`
+
+## Create CSR
+openssl genrsa -out saiyam.key 2048
+openssl req -new -key saiyam.key -out saiyam.csr -subj "/CN=saiyam/O=group1"
+
+## Sign CSE with Kubernetes CA
+cat saiyam.csr | base64 | tr -d '\n'
+
+```
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: saiyam
+spec:
+  request: BASE64_CSR
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth
+```
+kubectl apply -f csr.yaml
+kubectl certificate approve saiyam
+
+kubectl get csr saiyam -o jsonpath='{.status.certificate}' | base64 --decode > saiyam.crt
+
+## Role and role binding
+```
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: read-pods
+  namespace: default
+subjects:
+- kind: User
+  name: saiyam
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+```
+### setup kubeconfig
+kubectl config set-credentials saiyam --client-certificate=saiyam.crt --client-key=saiyam.key
+kubectl config get-contexts
+kubectl config set-context saiyam-context --cluster=kubernetes --namespace=default --user=saiyam
+kubectl config use-context saiyam-context
+
+
+### Merging multiple KubeConfig files
+export KUBECONFIG=/path/to/first/config:/path/to/second/config:/path/to/third/config
+
+
+
+========================================
+
+Create a file deploy.json
+```
+kubectl create deployment nginx --image=nginx --dry-run=client -o json > deploy.json
+kubectl run nginx --image=nginx --dry-run=client -o json
+
+```
+
+SA creation
+```
+kubectl create serviceaccount sam --namespace default
+kubectl create clusterrolebinding sam-clusteradmin-binding --clusterrole=cluster-admin --serviceaccount=default:sam
+kubectl create token sam
+TOKEN=outputfromabove
+APISERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+List deployments
+curl -X GET $APISERVER/apis/apps/v1/namespaces/default/deployments -H "Authorization: Bearer $TOKEN" -k
+Create Deployment
+curl -X POST $APISERVER/apis/apps/v1/namespaces/default/deployments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d @deploy.json \
+  -k
+
+List pods
+curl -X GET $APISERVER/api/v1/namespaces/default/pods \
+  -H "Authorization: Bearer $TOKEN" \
+  -k
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

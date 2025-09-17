@@ -1,0 +1,178 @@
+kubernetes scheduling :
+
+
+
+6. Scheduling Fundamentals
+
+Scheduler Decision Factors
+
+Resource availability (CPU/memory).
+
+Affinity/anti-affinity (placing pods together or separately).
+
+Taints and Tolerations (control pod placement).
+
+
+we label pod, node, deployment etc that we create in kubernetes ecosystem for clear understanding that what is this application, what are its labels, what is this node for and what are its labels
+
+example we labeled a node wasm, gpu and xyz now we know that wasm workload wil run here in this node and gpu based workload will run here in this node labeled with gpu .
+we can label lots of nodes as gpu or wasm etc.
+
+we can do lots of things on label. we can create policies
+
+Kyverno is a tool we can install in kubernetes using Kyverno we can create policies like that if an object has no label then it will not be created.
+
+authentication, authorization, admission . at admission time policies are checked there after checking this policy that label of the object is not there so object will not be created.
+
+or we can create policy like if there is no label then it will be labeled with any default value or default label name this is called mutating web-hook
+
+mutation means when request comes it checks for something whether its there or not and then we add something our own into the object and then apply it so there with using policy we change it
+
+
+labels and selectors are key-value pairs defined in metadata section
+
+
+annotations play big role. we can use annotations in kios testing or pods cidr range or cert manager or when we have to define ingress or when we have to define service mesh
+
+
+this will show label of the pods
+kubectl get pods --show-labels
+
+kubectl run mynginx --image=nginx
+
+kubectl get pods --show-labels
+
+# label is key-value pair and here labeling the pod with key as live and value is mydemonginx
+kubectl label pod mynginx live=mydemonginx
+
+kubectl get pods --show-labels
+
+labels and selectors add meaning to the kubernetes object
+
+selectors selecting on the based of labels
+
+
+deployments and services are labeled and seletected in same way i.e. service is also labeled as and selected as with matching label like deployment.
+using nodeselector we can alter scheduling
+eg nodeselector :
+equity based label
+set based labels in, notin, exists
+
+
+
+
+selector:
+  matchLabels:
+    component: redis
+  matchExpressions:
+    - {key: tier, operator: In, values: [cache]}
+    - {key: environment, operator: NotIn, values: [dev]}
+
+
+here matchLabels:component redis is equity based label
+here under matchExpressions set based labels with key and operator and values set and in operator values can be In, NotIn, exists
+
+key can be anything,
+
+so this is telling  select the pod whose label's key is tier or environment and checks that tier or environment exist, in or notIn the values i.e. cache or dev
+
+
+we can use multiple Scheduler or descheduler or single Scheduler or default Scheduler
+
+
+
+
+kubectl describe pod
+
+kubectl run mynginx --image=nginx
+
+kubectl get pods --show-labels
+
+# label is key-value pair and here labeling the pod with key as live and value is mydemonginx
+kubectl label pod mynginx app=testing
+
+kubectl get pods --show-labels
+
+# this will list pod where label app is not nginx
+kubectl get pod -l app!=nginx
+
+
+# list all the resource there you can see short names like for deployment deploy , for pod po etc..
+kubectl api resources
+
+kubectl create deploy bootcamp --image=nginx --replicas 3
+
+# list all the pods with label in braces i.e. either test or bootcamp
+kubectl get pods -l 'app in (test,bootcamp)'
+
+
+
+
+
+
+
+
+
+go through the statements given and make corrections and edit and suggest with simple language to easy to understand and remember about the concept RESOURCE REQUEST LIMIT in kubernetes with examples and easy explanations to remember in simple language
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
