@@ -44,6 +44,8 @@ kubectl get pods --show-labels
 
 kubectl run demonginx --labels='demo=mynginx' --image=nginx
 
+kubectl run demonginx2 -l="demo=mynginx" --image=nginx
+
 # label is key-value pair and here labeling the pod with key as live and value is mydemonginx
 kubectl label pod mynginx live=mydemonginx
 
@@ -102,17 +104,28 @@ kubectl get pod -l app!=nginx
 
 
 # list all the resource there you can see short names like for deployment deploy , for pod po etc..
-kubectl api resources
+kubectl api-resources
 
 kubectl create deploy demo --image=nginx -n bootcamp
-kubectl label deploy demo app1=demo1 -n bootcamp
 
-kubectl create deploy bootcamp --image=nginx --replicas 3
+kubectl get deploy --show-labels -n bootcamp
+
+kubectl label deploy <deploy-name> app1=demo1 -n bootcamp
+
+kubectl create ns bootcamp
+
+kubectl create deploy demong --image=nginx --replicas 3 -n bootcamp
+
+kubectl create deploy demong --replicas 3 -n bootcamp --image=nginx
 
 # list all the pods with label in braces i.e. either test or bootcamp. here we used set operator.
 kubectl get pods -l 'app in (test,bootcamp)'
 
 kubectl get pods --show-labels
+
+kubectl get pods --show-labels -n bootcamp
+
+kubectl get deploy --show-labels -n bootcamp
 
 # list all the namespaces
 kubectl get ns
@@ -152,7 +165,7 @@ kubectl run nginx --image nginx
 # creating and running a pod in abc namespace
 kubectl run nginx --image nginx -n abc
 
-# listing all the pods with details like which node pod created and ip of pod
+# listing all the pods with details like pod created in which node and ip of pod
 kubectl get pods -owide
 
 # listing all the pods from abc namespace with node and ip info
@@ -202,8 +215,14 @@ spec:
     pods: "10" # total number of pods that can be created
 
 
-# creating resourcequota
+# creating resourcequota in example-namespace but before that first create example-namespace
 kubectl create -f resourcequota.yaml
+
+kubectl apply -f resourcequota.yaml
+
+kubectl get resourcequota -n example-namespace
+
+kubectl delete -f resourcequota.yaml
 
 # getting all ResourceQuota
 kubectl get ResourceQuota -A
@@ -246,6 +265,8 @@ kubectl create -f limitrange.yaml
 # this will show ResourceQuota but here we can see what request and limit range are set
 kubectl get ResourceQuota -A
 
+kubectl get limitrange -A
+
 cat pod-oversize.yaml
 apiVersion: v1
 kind: Pod
@@ -266,6 +287,16 @@ spec:
 
 # applying pod oversize i.e. by resourcequota request memory size is 500 but here in this pod-oversize request memory is 600. this will give forbidden error because of that. this was checked at admission phase before creating the pod
 kubectl apply -f pod-oversize.yaml
+
+
+# ERROR BECAUSE LIMIT WE PUT IN example-namespace by resourcequota.yaml
+controlplane:~/Kubernetes-hindi-bootcamp/part5$ kubectl apply -f pod-oversize.yaml
+Error from server (Forbidden): error when creating "pod-oversize.yaml": pods "oversized-pod" is forbidden: exceeded quota: example-quota, requested: requests.cpu=600m, used: requests.cpu=0, limited: requests.cpu=500m
+
+============================================================================================================================================================================================================================================================================================
+
+
+
 
 
 kubenodelease namespace is for node heartbeat in kubernetes node periodically indicates controlplane that we are alive node is alive. so node heartbeat is reported earlier it goes to kubesystem now it goes to kubenodelease. there are lease objects which improves scalability and performance of the node heartbeats. this is for node heartbeat. this improves failure-detection and quicker
@@ -415,16 +446,297 @@ kubectl scale  deploy demo-app --replicas 7
 
 kubectl get pods
 
+kubectl scale  deploy demo-app --replicas 8
+
+kubectl get pods -owide
+
+kubectl uncordon controlplane
+
+kubectl get pods -owide
 
 
 
 
+what is topologySpreadConstraints ? how topologySpreadConstraints works and what are the options in it ?
+
+
+priorityclass is 32bit Integer higher the value higher the priority.
+
+priorityclass used for critical apps
 
 
 
+kubectl get priorityclass -A
+
+system-cluster-critical and system-node-critical already exist with higher value. these priorityclass are for system level component i.e. kubernetes components
+
+EXAMPLE : suppose there are four nodes and node01 has 4 pods and node02 has 5 pods and node03 has 3 pods and node04 has 5 pods and apps are running on this cluster at normal priority i.e. default priority which means we did not set any priority. now suppose a mission-critical-app has come which is very important to run as soon as possible so now we have to deploy this mission-critical-app but all the resources are full. so where and how we can run this mission-critical-app so there we set priorityclass at mission-critical-app pod . now this priorityclass will evict pods running with low priority.
+
+
+cat priority_pod.yaml
+
+# this is priorityclass
+cat priority.yaml
+
+# setting controlplane unschedulable or schedulingdisabled so that default-scheduler  will not able to schedule pods on controlplane
+kubectl cordon controlplane
+
+# creating deployment mynginx with 100 replicas
+kubectl create deploy mynginx --image=nginx --replicas=100
+
+# try this first then run above command and see if it sets pending
+# kubectl cordon controlplane
+
+kubectl get pods
+
+# scaling up
+kubectl scale deploy mynginx --replicas 110
+
+# checking pods are pending
+kubectl get pods
+
+kubectl describe pods
+
+kubectl get po | grep Pen
+
+# look for warning : warning FailedScheduling 27s default-scheduler 0/2 nodes are available : 1 too many pods, 1 node(s) were unschedulable. preemption: 0/2 nodes are available: 1 No preemption victims found for incoming pod, 1 Preemption is not helpful for scheduling.
+kubectl describe pod mynginx-<value>
+
+# checking how many pods are running and available and unavailable
+kubectl get deploy
+
+# scaling down or up mynginx and check for pending if its there go with experiment
+kubectl scale deploy mynginx --replicas 140
+
+
+kubectl apply -f priority.yaml
+
+# this pod is with priorityclass so this pod will run even if the resource are not available and when we scale up this pod then also it will run even if the resources are not available by evicting the low priority pods
+kubectl apply -f priority_pod.yaml
+
+# check this pod for priorityClassName: demo-priority. demo-priority is PriorityClass name from priority.yaml
+cat priority_pod.yaml
+
+
+kubectl get pod high-priority-pod
+
+
+EXPLAIN POD-OVERHEAD USAGE AND USECASES WITH SIMPLE EXAMPLE IN SIMPLE FEW STATEMENTS TO EASY TO REMEMBER ?
+Pod Overhead : some runtimes(gviser, kata etc) use more resources for pod operations and we can specify the pod-overhead in RuntimeClass and the Scheduler takes pod-overhead request and pod request both and then make scheduling decision layout that at this node this number of resources are available so scheduler can schedule.
+
+NodeAffinity is used for altering scheduling
+Taints & Tolerations is used for altering scheduling
+nodeselector for altering scheduling
+nodename for altering scheduling
+
+kubectl delete deploy --all
+
+kubectl delete deploy -A
+
+Node Affinity is similar to NodeSelector. where your pods can be scheduled based on labels of Nodes.
+in Node Affinity we can specify lots of things. for example we can specify these below fields :
+1. required During Scheduling Ignored During Execution > hard (only run Pods on Nodes with xyz)
+2. prefered During Scheduling Ignored During Execution > Soft (try to run pods). here in this if node labels changed at Runtime it won't affect the other pods.
+
+
+defining affinity in yaml file for pod means that we want this pod to go there that means this pod get schedule on such nodes
+key: kubernetes.io/e2e-az-name : here kubernetes.io is prefix i.e. what mentioned before /(forward slash) this is not mandatory but good practise
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: with-node-affinity
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/e2e-az-name  # this Pod can be scheduled on node where this label defined in key here on node
+            operator: In                    # since operator is In so values can be within these two defined below.
+            values:                       # Pod can be scheduled where this label defined in key here on node with below either of two values
+            - e2e-az1
+            - e2e-az2
+      preferredDuringSchedulingIgnoredDuringExecution:   # if multiple nodes meet above criteria then prefer node matching.
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: another-node-label-key
+            operator: In
+            values:
+            -  another-node-label-value
+  containers:
+  - name: with-node-affinity
+    image: k8s.gcr.io/pause:2.0
+
+
+so here requiredDuringSchedulingIgnoredDuringExecution: this is telling run this pod and at the time of scheduling this should be the label that defined in matchExpressions key and values should be either of two values specified i.e. e2e-az1 or e2e-az2.
+preferredDuringSchedulingIgnoredDuringExecution:  this is telling that if multiple nodes meet above criteria i.e. defined in requiredDuringSchedulingIgnoredDuringExecution  then prefer node matching based on specified matchExpressions inside preferredDuringSchedulingIgnoredDuringExecution then prefer on node label specified inside key i.e. another-node-label-key and values i.e. another-node-label-value.
 
 
 
+kubectl cordon controlplane
+
+cat nodeaffinity
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+  - name: mycontainer
+    image: nginx
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: "topology.kubernetes.io/region"
+            operator: In
+            values:
+            - "us-east-1"
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: "disktype"
+            operator: In
+            values:
+            - "ssd"
+
+kubectl apply -f nodeaffinity
+
+# if pod is showing pending in status (mypod here)
+kubectl get pods
+
+# this will give error as there is no node with the specified label in nodeaffinity
+kubectl describe pod mypod
+
+kubectl get nodes
+
+kubectl label node node01 topology.kubernetes.io/region=us-east-1
+
+kubectl get nodes --show-label
+
+kubectl describe pod mypod
+
+kubectl get pods
+
+kubectl label node controlplane topology.kubernetes.io/region=us-east-1
+
+kubectl label node controlplane disktype=ssd
+
+kubectl uncordon controlplane
+
+kubectl delete -f nodeaffinity
+
+kubectl apply -f nodeaffinity
+
+
+
+Node Affinity is a property of Pods that attracts them to a set of nodes(either as a preference or a hard requirement).
+Taints are the opposite - they allow a node to repel a set of pods.
+
+
+ A cluster with controlplane and three nodes and one node is setup with taint(foo=bar:NoSchedule). scheduler schedules pod and checks taints i.e. foo=bar:NoSchedule here a POD with toleration i.e. Key:"foo", operator:"Equal" and value:"bar" and effect:"NoSchedule" will schedule on this node which is tainted with foo=bar:NoSchedule.
+
+
+ operator: Equal/Exist/NoValueReq.
+ effects: NoSchedule/PreferNoSchedule(if pod is not scheduled on any node then schedule here on this node)/NoExecute
+
+ if node is tainted with NoExecute Effect then suppose if a node has two running pods and there is no toleration and suppose node is tainted with Effect NoExecute then pod running from earlier will be evicted if tainted and only matching toleration specified pod will run at the node.
+
+USECASES:
+1. Dedicated Nodes
+2. Special Hardware
+3. Taint Based Evictions -> No Execute.
+
+
+cat toleration.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-tolerations
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  tolerations:
+  - key: "app"
+    operator: "Equal"
+    value: "demo"
+    effect: "NoSchedule"
+
+kubectl apply -f toleration.yaml
+
+kubectl get pods
+
+kubectl delete -f toleration.yaml
+
+# till now there is no taint on our nodes so lets taint our node01
+kubectl taint nodes node01 app=demo:NoSchedule
+
+kubectl get nodes
+
+kubectl get pods
+
+kubectl cordon controlplane
+
+kubectl run abc --image=abc
+
+kubectl get nodes
+
+# only node01 where pod can schedule since controlplane is cordoned
+# but node01 is tainted  so pod with toleration matching to node01 taint will run
+kubectl get pods
+
+kubectl describe pod
+
+# node01 is tainted with app=demo:NoSchedule so a matching pod with toleration will run on node01
+kubectl apply -f toleration.yaml
+
+kubectl get pods
+
+# here node is tainted with effect NoExecute so earlier running pod will evvict and pod with toleration where effect does not matchup
+kubectl taint nodes node01 app=demo:NoExecute
+
+kubectl get pods
+
+kubectl get pods -owide
+
+
+
+kubectl run nginx --image=nginx --dry-run=client -oyaml
+
+
+vi pod
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  nodeName: node01
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+
+since we add nodeName in yaml file of pod and specify on which node pod will run this will bypass scheduler
+add nodeName in spec section with value as node01
+
+kubectl apply -f po
+
+kubectl get pods -owide
+
+nodeselector by yourself
 
 
 priority-class

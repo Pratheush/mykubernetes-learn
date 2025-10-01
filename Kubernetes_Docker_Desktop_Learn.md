@@ -2089,8 +2089,6 @@ When updating a Deployment:
 
 ![PDB3.png](D:\Kubernetes%20Learning\kube_screenshot\part%204\PDB3.png)
 
-
-
 DEPLOYMENT.YAML
 
 ```yaml
@@ -2115,7 +2113,6 @@ spec:
         image: nginx:1.14.2
         ports:
         - containerPort: 80
-
 ```
 
 PDB.YAML:
@@ -2131,10 +2128,6 @@ spec:
     matchLabels:
       app: nginx
 ```
-
-
-
-
 
 ```powershell
 kubectl delete deploy deployment-name
@@ -2245,8 +2238,6 @@ kubectl describe node node01
 
 Look at `Allocatable` vs `Used` resources. If the node is low on CPU/memory, pods won’t schedule.
 
-
-
 ## 🧠 Quick Recap
 
 | Action                  | Result                                                |
@@ -2255,14 +2246,6 @@ Look at `Allocatable` vs `Used` resources. If the node is low on CPU/memory, pod
 | `kubectl uncordon`      | Makes node schedulable again                          |
 | Pods stuck in `Pending` | Likely due to unschedulable node or lack of resources |
 | Use `describe pod`      | To find exact reason for pending status               |
-
-
-
-
-
-
-
-
 
 **<mark>⚙️ RESOURCE REQUESTS & LIMITS – SIMPLIFIED</mark>**
 
@@ -2280,7 +2263,6 @@ resources:
   limits:
     cpu: "500m"
     memory: "512Mi"
-
 ```
 
 ### 🧠 Why They Matter
@@ -2289,8 +2271,6 @@ resources:
 
 - **Limits** are enforced at runtime by the **kubelet** and **Linux kernel (via cgroups)**.
 
-
-
 ## 🧮 RESERVED CPU – EXPLAINED
 
 Reserved CPU = The CPU amount guaranteed to a container via its **request**.
@@ -2298,8 +2278,6 @@ Reserved CPU = The CPU amount guaranteed to a container via its **request**.
 ### 🔧 Example:
 
 If you set `cpu: "500m"` as a request, Kubernetes reserves **0.5 CPU cores** on the node for that container. Even if the container is idle, that CPU is blocked for others.
-
-
 
 ## 🧠 CPU Throttling (Linux CFS)
 
@@ -2310,8 +2288,6 @@ If you set `cpu: "500m"` as a request, Kubernetes reserves **0.5 CPU cores** on 
 - This prevents noisy neighbors from hogging CPU.
 
 NOISY NEIGHBOUR LIKE IN A NODE ONE APP IS USING MORE CPU OR CPU UTILIZATION KEEP ON INCREASING OR ANOTHER APP NEEDS MORE CPU THERE DEFINING LIMIT TO CPU IS GOOD
-
-
 
 ## 📊 OVER vs UNDER UTILIZATION
 
@@ -2354,10 +2330,6 @@ SCHEDULER HAS TO EVICT POD AND POD EVICTION IS DONE BASED ON QUALITY OF SERVICES
 
 IN PRODUCTION WE SHOULD SPECIFY RESOURCE REQUEST LIMIT OR ELSE WE SHOULD SPECIFY LIMITRANGE FOR NAMESPACE 
 
-
-
-
-
 ## 🧾 LimitRange – Namespace Defaults
 
 Use `LimitRange` to enforce default resource settings in a namespace.
@@ -2377,7 +2349,6 @@ spec:
     defaultRequest:
       cpu: "200m"
       memory: "100Mi"
-
 ```
 
 ```yaml
@@ -2422,10 +2393,6 @@ Above LimitRange is set up for default namespace.
 
 > **LimitRange = list of rules per resource type** 
 > Always use `- type: Container` or `- type: Pod` under `limits`
-
-
-
-
 
 ## 📦 Downward API – Self-Awareness for Pods
 
@@ -2487,8 +2454,6 @@ Other useful fields:
 
 - `spec.serviceAccountName` → Service account
 
-
-
 My Practical with DownwardApi ::
 
 ```powershell
@@ -2525,8 +2490,6 @@ TERM=xterm
 HOME=/root
 ```
 
-
-
 ## ⚖️ FAIR SHARE SCHEDULING – EXPLAINED
 
 When multiple containers request CPU but no limits are set:
@@ -2536,8 +2499,6 @@ When multiple containers request CPU but no limits are set:
 - Example: Pod A requests 600m, Pod B requests 300m → CPU split 2:1.
   
   based on request Linux CFS divides CPU 2:1
-
-
 
 ## 🧱 RESOURCE QUOTA AT NODE LEVEL
 
@@ -2562,8 +2523,6 @@ spec:
     limits.cpu: "4"
     limits.memory: "8Gi"
 ```
-
-
 
 ## 🧠 Final Cheat Sheet
 
@@ -2601,8 +2560,6 @@ spec:
         cpu: "500m"
 ```
 
-
-
 In **burstable.yaml** only one of the two is specified i.e. either cpu or memory. here request and limits  are not set same for the resource.
 
 Burstable Example: myburstable.yaml
@@ -2623,8 +2580,6 @@ spec:
         memory: "512Mi"
 ```
 
-
-
 In **besteffort.yaml** no resource i.e. no cpu and no memory is specified
 
 BestEffort Example : mybesteffort.yaml
@@ -2639,8 +2594,6 @@ spec:
   - name: nginx
     image: nginx
 ```
-
-
 
 MY PRACTICAL :: usage of drain command and uncordon command
 
@@ -2674,8 +2627,6 @@ NAME      READY   STATUS              RESTARTS   AGE   IP       NODE     NOMINAT
 mynginx   0/1     ContainerCreating   0          9s    <none>   node01   <none>           <none>
 controlplane:~$
 ```
-
-
 
 EXAMPLE : USAGE OF LIMITRANGE : 
 
@@ -2829,32 +2780,1679 @@ kubectl exec -it <pod-name> -- printenv
 kubectl exec -it <pod-name> -- bash
 ```
 
-
-
-
-
 CHECKING RESOURCE FOR POD CREATED AFTER SETTING LIMITRANGE INTO DEFAULT NAMESPACE
 
 ![check resource.png](D:\Kubernetes%20Learning\kube_screenshot\part%204\check%20resource.png)
-
-
 
 CHECKING QOS FOR POD CREATED AFTER SETTING LIMITRANGE INTO DEFAULT NAMESPACE
 
 ![check qos.png](D:\Kubernetes%20Learning\kube_screenshot\part%204\check%20qos.png)
 
-
-
 FINDING BEST FIT NODE FOR POD :
 
 ![scheduling pod fiting node.png](D:\Kubernetes%20Learning\kube_screenshot\part%204\scheduling%20pod%20fiting%20node.png)
 
-
-
 ***
 
 ***
-
-
 
 **<mark>KUBERNETES SCHEDULING</mark>**
+
+**<mark>🚀 Kubernetes Scheduling Fundamentals</mark>**
+
+### 🔍 Scheduler Decision Factors
+
+The **Kubernetes Scheduler** decides **which node runs a pod**.  
+Factors considered:
+
+- **Resource Availability**: CPU, memory
+
+- **Affinity / Anti-Affinity**: Place pods together or apart i.e. separately
+
+- **Taints & Tolerations**: Control which pods can run on which nodes i.e. prevent or allow pods on specific nodes.
+
+👉 By default, the **default scheduler** runs, but we can use multiple schedulers or a descheduler.
+
+🏷️ Labels & Selectors
+
+### ✅ What Are Labels?
+
+- **Key-value pairs** in the **metadata** of an object (Pod, Node, Deployment, Service, etc.).
+
+- Used for **identification, grouping, and selection**.
+
+```yaml
+metadata:
+  labels:
+    app: nginx
+    tier: frontend
+```
+
+we label pod, node, deployment etc that we create in kubernetes ecosystem for clear understanding that what is this application, what are its labels, what is this node for and what are its labels
+
+example we labeled a node wasm, gpu and xyz now we know that wasm workload wil run here in this node and gpu based workload will run here in this node labeled with gpu .
+we can label lots of nodes as gpu or wasm etc.
+
+we can do lots of things on label. we can create policies
+
+Kyverno is a tool we can install in kubernetes using Kyverno we can create policies like that if an object has no label then it will not be created.
+
+### Why Labels?
+
+- Help us **organize resources**.
+
+- Example: If a node is labeled `gpu=true`, GPU workloads can be scheduled there.
+
+- We can attach multiple labels: `gpu=true`, `wasm=true`, `env=prod`.
+
+👉 **Labels = tags for organizing.**
+
+```powershell
+# Show pod labels
+kubectl get pods --show-labels
+
+# Run a pod without label
+kubectl run mynginx --image=nginx
+
+# Run a pod with label
+kubectl run demonginx --image=nginx --labels="demo=mynginx"
+
+kubectl run demonginx2 -l="demo=mynginx" --image=nginx
+
+# label is key-value pair and here labeling the pod with key as live and value is mydemonginx
+kubectl label pod mynginx live=mydemonginx
+
+# Add label later
+kubectl label pod mynginx live=mydemonginx
+
+# Filter pods by label
+kubectl get pods -l app=testing
+
+# Show pods where label app != nginx
+kubectl get pods -l app!=nginx
+```
+
+labels and selectors add meaning to the kubernetes object
+
+selectors selecting on the based of labels
+
+### Label Selectors
+
+deployments and services are labeled and seletected in same way i.e. service is also labeled as and selected as with matching label like deployment.
+using nodeselector we can alter scheduling
+
+labels and selectors add meaning to the kubernetes object.
+
+selectors selecting on the based of labels.
+
+1. **Equality-based**
+
+```yaml
+selector:
+  matchLabels:
+    component: redis
+```
+
+👉 Selects pods with `component=redis`.
+
+2. **Set-based**
+
+```yaml
+selector:
+  matchExpressions:
+    - { key: tier, operator: In, values: [cache] }
+    - { key: environment, operator: NotIn, values: [dev] }
+```
+
+👉 Selects pods with `tier=cache` and `environment != dev`.
+
+📌 Operators: `In`, `NotIn`, `Exists`, `DoesNotExist`.
+
+```yaml
+selector:
+  matchLabels:
+    component: redis
+  matchExpressions:
+    - {key: tier, operator: In, values: [cache]}
+    - {key: environment, operator: NotIn, values: [dev]}
+```
+
+here matchLabels:component redis is equity based label
+here under matchExpressions set based labels with key and operator and values set and in operator values can be In, NotIn, exists
+
+key can be anything,
+
+so this is telling  select the pod whose label's key is tier or environment and checks that tier or environment exist, in or notIn as per the operator value check in the values set i.e. cache or dev
+
+## 3. Labels in Scheduling
+
+- **NodeSelector** = schedule pods on specific nodes.  
+  📌 Example:
+
+```yaml
+spec:
+  nodeSelector:
+    gpu: "true"
+```
+
+👉 This pod will only run on nodes labeled `gpu=true`.
+
+## 4. Admission, Authentication, Authorization
+
+- **Authentication**: Who are you?
+
+- **Authorization**: Are you allowed to do this? (RBAC)
+
+- **Admission**(Policies, quotas, limits): Should the object be allowed in the cluster?
+
+👉 At admission phase, policies are checked.
+
+### Policies with Kyverno
+
+- Example: “**Validation Policy**: Block objects without labels i.e. If an object has no label, **deny creation**.”
+
+- Or: “If an object has no label, **add a default label**.” (mutating webhook).
+
+📌 **Mutation = automatically modifying an object before saving.**
+
+mutation means when request comes it checks for something whether its there or not and then we add something our own into the object and then apply it so there with using policy we change it
+
+## 5. Annotations vs Labels
+
+- **Labels**: used for selection and grouping.
+
+- **Annotations**: store extra information (not used for selection).
+  
+  - Examples: testing notes, cert-manager configs, service mesh metadata.
+
+👉 Think:
+
+- **Labels = searchable tags.**
+
+- **Annotations = sticky notes (extra info).**
+
+## 🧾 Annotations vs Labels
+
+| Feature | Labels                | Annotations                    |
+| ------- | --------------------- | ------------------------------ |
+| Purpose | Selection, grouping   | Metadata, extra info           |
+| Used in | Scheduling, selectors | Ingress, cert-manager, testing |
+| Format  | Key-value             | Key-value                      |
+
+```powershell
+kubectl describe pod
+
+kubectl run mynginx --image=nginx
+
+kubectl run demo2nginx -l="app=testing" --image=nginx
+
+kubectl get pods --show-labels
+
+# label is key-value pair and here labeling the pod with key as live and value is mydemonginx
+kubectl label pod mynginx app=testing
+
+kubectl get pods --show-labels
+
+# this will list pod where label app is not nginx
+kubectl get pod -l app!=nginx
+
+
+# list all the resource there you can see short names like for deployment deploy , for pod po etc..
+kubectl api-resources
+
+kubectl create deploy demo --image=nginx -n bootcamp
+
+kubectl get deploy --show-labels -n bootcamp
+
+kubectl label deploy <deploy-name> app1=demo1 -n bootcamp
+
+kubectl create ns bootcamp
+
+kubectl create deploy demong --image=nginx --replicas 3 -n bootcamp
+
+kubectl create deploy demong --replicas 3 -n bootcamp --image=nginx
+
+# list all the pods with label in braces i.e. either test or bootcamp. here we used set operator.
+kubectl get pods -l 'app in (test,bootcamp)'
+
+kubectl get pods --show-labels
+
+kubectl get pods --show-labels -n bootcamp
+
+kubectl get deploy --show-labels -n bootcamp
+
+# list all the namespaces
+kubectl get ns
+```
+
+## 6. Namespaces
+
+### What are Namespaces?
+
+- **Logical groups** of resources.
+
+- Like folders in a computer – they separate and organize workloads.
+
+- Useful for multi-team environments.
+
+Namespaces: we deploy resources in namespaces
+grouping resources together.
+namespaces are like logical entity mainly for grouping resources together
+
+📌 Example:
+
+```powershell
+kubectl create ns dev
+kubectl create ns bootcamp
+```
+
+👉 Deployments in `dev` namespace are isolated from `bootcamp`.
+
+commands:
+
+```powershell
+# List namespaces
+kubectl get ns
+
+# Create namespace
+kubectl create ns abc
+
+# Run pod in specific namespace
+kubectl run nginx --image=nginx -n abc
+
+# List pods with wide info (node, IP)
+kubectl get pods -o wide -n abc
+
+# Change default namespace for context
+kubectl config set-context --current --namespace=dev
+```
+
+### 
+
+## 🧠 Kubernetes Deployment & Scheduling – Simplified Notes
+
+### 🧩 Scenario Recap
+
+You have:
+
+- **DeployA** with **4 replicas** → goes to **NamespaceA**
+
+- **DeployB** with **2 replicas** → goes to **NamespaceB**
+
+- Two virtual machines: **V1M** and **V2M**
+
+- An application is deployed across these VMs
+
+**Pod distribution:**
+
+- DeployA → 2 pods on V1M, 2 pods on V2M
+
+- DeployB → 1 pod on V1M, 1 pod on V2M
+  
+  when scheduler schedules it doesn't know about namespaces. scheduler schedules based on resources (like cpu, memory, space etc) stuff like that.
+  because nodes doesnot know about namespaces and namespaces cannot exist at two places so namespaces are like logical entity which group resources together
+  but we can make scheduler aware based on the limitrange, resource-quota and limitrange and resource-quota checked at admission phase
+
+### 📦 What is a Namespace?
+
+- A **namespace** is a **logical grouping** of Kubernetes resources.
+
+- Think of it like folders on your computer: NamespaceA and NamespaceB are separate folders.
+
+- You can have DeployA in NamespaceA and DeployB in NamespaceB — they don’t interfere with each other.
+
+📝 **Key Point:** Namespaces help organize and isolate resources, but they are **not tied to physical nodes** like V1M or V2M.
+
+### ⚙️ What Does the Scheduler Do?
+
+- The **Kubernetes scheduler** decides **where** to place pods (on which node).
+
+- It looks at **available resources** like CPU, memory, disk space — **not namespaces**.
+
+- Scheduler doesn’t care if the pod is from NamespaceA or NamespaceB — it just finds the best node to run it.
+
+🧠 **Example:** If V1M has more free memory, the scheduler might place a pod there, even if it’s from NamespaceB.
+
+### 🛡️ How Do Namespaces Affect Scheduling?
+
+- **By default**, namespaces don’t affect scheduling.
+
+- But you can **influence scheduling** using:
+  
+  - **ResourceQuota**: Limits total CPU/memory usage in a namespace.
+  
+  - **LimitRange**: Sets default/request/limit values for pods in a namespace.
+
+These are checked during the **admission phase** (before the pod is scheduled).
+
+🧠 **Example:** If NamespaceB has a ResourceQuota of 1 CPU and DeployB tries to use 2 CPUs, it will be rejected.
+
+### 🔐 Authorization: Who Can Do What?
+
+- Kubernetes uses **RBAC (Role-Based Access Control)** to check:
+  
+  - Who is trying to deploy?
+  
+  - Which namespace are they deploying to?
+  
+  - Do they have permission?
+
+🧠 **Example:** A developer with access to NamespaceA cannot deploy to NamespaceB unless they have the right role.
+
+### 🧾 Summary Cheat Sheet
+
+| Concept       | What It Means                              | Example                               |
+| ------------- | ------------------------------------------ | ------------------------------------- |
+| Namespace     | Logical grouping of resources              | DeployA in NamespaceA                 |
+| Scheduler     | Places pods on nodes based on resources    | Pod goes to V1M if it has free memory |
+| ResourceQuota | Limits total resource usage in a namespace | Max 2 CPUs for NamespaceB             |
+| LimitRange    | Sets default/request/limit for pods        | Pod must request ≤ 500Mi memory       |
+| RBAC          | Controls who can do what                   | Dev can deploy only in NamespaceA     |
+
+### 🧠 Easy Mnemonic to Remember
+
+**"NS-RL-SR"** → *Namespace, RBAC, LimitRange, Scheduler, ResourceQuota*
+
+- **N**amespace: Logical grouping
+
+- **S**cheduler: Places pods based on resources
+
+- **R**BAC: Checks permissions
+
+- **L**imitRange: Pod-level limits
+
+- **R**esourceQuota: Namespace-level limits
+
+***Namespaces group resources logically to isolate, organize, and manage access within a shared Kubernetes cluster.***
+
+### Networking in Namespaces
+
+- **By default, pods in different namespaces can communicate.**
+
+- Example:
+
+```powershell
+kubectl exec -it nginx -- curl <pod-ip-in-other-namespace>
+```
+
+👉 To block communication, use **NetworkPolicies**.
+
+**COMMUNICATION BETWEEN POD's FROM TWO DIFFERENT NAMESPACE**
+
+```powershell
+# we are creating a namespace abc
+kubectl create ns abc
+
+# running a pod in default namespace. when -n flag is not mentioned then pod will be created in default namespace
+kubectl run nginx --image nginx
+
+# creating and running a pod in abc namespace
+kubectl run nginx --image nginx -n abc
+
+# listing all the pods with details like pod created in which node and ip of pod
+kubectl get pods -owide
+
+# listing all the pods from abc namespace with node and ip info
+kubectl get pods -owide -n abc
+
+# here i am exec into nginx running in default namespace from there i am running curl on pod which is running in abc namespace. this proves that eventhough namespace is different two pods can communicate with other pod.
+kubectl exec -it nginx -- curl <ip-of another pod from abc - namespace>
+
+kubectl exec -it -n abc bootcamp-7c8698ff84-5pfwc -- curl 192.168.0.4
+
+SO BY DEFAULT PODS CAN COMMUNICATE WITH EACHOTHER
+
+# listing all namespace
+kubectl get ns
+
+# creating dev namespace
+kubectl create ns dev
+
+# creating bootcamp namespace
+kubectl create ns bootcamp
+
+# creating deployment demo in bootcamp namespace using -n flag
+kubectl create deploy demo -n bootcamp --image=nginx
+
+# creating deployment demo in dev namespace using -n flag
+kubectl create deploy demo -n dev --image=nginx
+
+# setting current namespace dev from default namespace
+kubectl config set-context --current --namespace=dev
+```
+
+### ResourceQuota
+
+- Restricts total **resources per namespace**.  
+  
+  👉 Prevents namespace from consuming too many resources.📌 Example: `resourcequota.yaml`
+
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: example-quota
+  namespace: example-namespace
+spec:
+  hard:
+    requests.cpu: "500m" # total amount of CPU that can be requested
+    requests.memory: "200Gi" # total amount of memory that can be requested
+    limits.cpu: "1" # total amount of CPU limit across all pods
+    limits.memory: 400Gi # total amount of memory limit across all pods
+    pods: "10" # total number of pods that can be created
+```
+
+### LimitRange
+
+- Defines **min, max, and default** resources per **Pod or Container**.
+
+📌 Example: `limitrange.yaml`
+
+```yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: example-limitrange
+  namespace: example-namespace
+spec:
+  limits:
+  - type: Pod
+    max:
+      cpu: "2" # max CPU per Pod
+      memory: 2Gi # max memory per Pod
+    min:
+      cpu: "200m" # min CPU per Pod
+      memory: 200Mi # min memory per Pod
+  - type: Container
+    default:
+      cpu: "100m" # default CPU request for any container
+      memory: 100Mi # default memory request for any container
+    defaultRequest:
+      cpu: "100m" # default CPU limit for any container
+      memory: 100Mi # default memory limit for any container
+    max:
+      cpu: "1" # max CPU per Container
+      memory: 1Gi # max memory per Container
+    min:
+      cpu: "100m" # min CPU per Container
+      memory: 100Mi # min memory per Container
+```
+
+### ResourceQuota + LimitRange in Action
+
+📌 Oversized Pod example:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: oversized-pod
+  namespace: example-namespace
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    resources:
+      requests:
+        memory: "600Mi"
+        cpu: "600m"
+      limits:
+        memory: "600Mi"
+        cpu: "600m"
+```
+
+👉 If namespace quota allows only `500m` CPU, pod creation **fails with Forbidden error**.
+
+Commands : USAGE Resourcequot, LimitRange
+
+```powershell
+# creating example namespace
+kubectl create ns example-namespace
+
+# creating resourcequota in example-namespace but before that first create example-namespace
+kubectl create -f resourcequota.yaml
+
+kubectl apply -f resourcequota.yaml
+
+kubectl get resourcequota -n example-namespace
+
+kubectl delete -f resourcequota.yaml
+
+# getting all ResourceQuota
+kubectl get ResourceQuota -A
+
+
+# creating limitrange
+kubectl create -f limitrange.yaml
+
+
+# this will show ResourceQuota but here we can see what request and limit range are set
+kubectl get ResourceQuota -A
+
+kubectl get limitrange -A  
+
+# applying pod oversize i.e. by resourcequota request memory size is 500 but here in this pod-oversize request memory is 600. this will give forbidden error because of that. this was checked at admission phase before creating the pod
+kubectl apply -f pod-oversize.yaml                                                
+
+# ERROR BECAUSE LIMIT WE PUT IN example-namespace by resourcequota.yaml
+controlplane:~/Kubernetes-hindi-bootcamp/part5$ kubectl apply -f pod-oversize.yaml
+Error from server (Forbidden): error when creating "pod-oversize.yaml": pods "oversized-pod" is forbidden: exceeded quota: example-quota, requested: requests.cpu=600m, used: requests.cpu=0, limited: requests.cpu=500m
+```
+
+**Diagram:**
+
+flow: User → API Server → Admission → Scheduler → Node) to visualize the whole lifecycle of pod scheduling + policy enforcement
+
+```yaml
+User (kubectl / API request)
+        |
+        v
+Kubernetes API Server
+        |
+        v
+Authentication (Who are you?)
+        |
+        v
+Authorization (Are you allowed?)
+        |
+        v
+Admission Controllers (policies, quotas, mutations)
+        |
+        v
+etcd (stores object spec) + Scheduler (decides Node)
+        |
+        v
+Kubelet on Node (creates Pod → pulls image → runs container)
+```
+
+**NODENAME & NODESELECTOR**
+
+```powershell
+kubectl run nginx --image=nginx --dry-run=client -o yaml
+```
+
+| Component           | Meaning                                                                |
+| ------------------- | ---------------------------------------------------------------------- |
+| `kubectl run nginx` | Creates a Pod named `nginx`                                            |
+| `--image=nginx`     | Uses the official `nginx` container image                              |
+| `--dry-run=client`  | Simulates the command on the client side without sending it to the API |
+| `-o yaml`           | Outputs the result in YAML format                                      |
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  nodeName: node01
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+using `nodeName: node01`, which **hard-codes** the Pod to run on a specific node. If you want more flexibility and **schedule Pods based on node labels**, you should use `nodeSelector`.
+
+since we add nodeName in yaml file of pod and specify on which node pod will run this will bypass scheduler
+add nodeName in spec section with value as node01
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: mynginx
+  name: nginx
+spec:
+  nodeSelector:
+    disktype: ssd
+  containers:
+  - image: nginx
+    name: mynginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+
+### 🔍 How It Works:
+
+- `nodeSelector` matches the Pod to nodes that have the label `disktype=ssd`.
+
+- You must ensure that your target node (e.g., `node01`) has this label:
+
+```yaml
+kubectl label nodes node01 disktype=ssd
+```
+
+This way, the Pod will be scheduled on any node with that label—not just `node01`. It’s cleaner and more scalable.
+
+```powershell
+controlplane:~$ cat nodeselectorpod.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: mynginx
+  name: mynginx
+spec:
+  nodeSelector:
+    disktype: ssd
+  containers:
+  - image: nginx
+    name: mynginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+
+controlplane:~$ kubectl apply -f nodeselectorpod.yaml 
+pod/mynginx created
+controlplane:~$ kubectl get pods
+NAME      READY   STATUS    RESTARTS   AGE
+mynginx   1/1     Running   0          7s
+nginx     1/1     Running   0          24m
+controlplane:~$ kubectl get pods -owide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE     NOMINATED NODE   READINESS GATES
+mynginx   1/1     Running   0          12s   192.168.1.5   node01   <none>           <none>
+nginx     1/1     Running   0          24m   192.168.1.4   node01   <none>           <none>
+controlplane:~$ kubectl get pods -owide --show-labels
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE     NOMINATED NODE   READINESS GATES   LABELS
+mynginx   1/1     Running   0          65s   192.168.1.5   node01   <none>           <none>            run=mynginx
+nginx     1/1     Running   0          25m   192.168.1.4   node01   <none>           <none>            run=nginx
+```
+
+## 🧠 Tips to Remember
+
+- **Labels = Identity**, **Selectors = Filters**, **searchable tags.**
+
+- **nodeSelector = flexible scheduling**, **nodeName = fixed scheduling**
+
+- **Kyverno = policy enforcer**
+
+- **Annotations = extra info, not for selection**
+
+- **Namespaces = logical grouping, not physical isolation**
+
+- **ResourceQuota = total limits or total budget per namespace.**
+
+- **LimitRange = per-pod/container limits**
+
+- **Admission phase = checkpoint before creation.**
+
+- **Mutation = auto-fix object before saving.**
+
+***
+
+***
+
+- In Kubernetes, **nodes need to tell the control plane “I’m alive”** → this is called a **node heartbeat**.
+
+- Earlier (before Kubernetes v1.13), these heartbeats were stored as updates to the **Node object** in the `kube-system` namespace.
+
+- Now, Kubernetes uses a **dedicated namespace** called `kube-node-lease`.
+
+- Inside this namespace, there is a **Lease object** for each node.
+
+- These Lease objects store lightweight “heartbeat” signals.
+
+- Advantage: Updating a small Lease object is **faster and more scalable** than updating the entire Node object.
+
+- This means **quicker failure detection** and **less load** on the API server when you have thousands of nodes.
+
+***
+
+***
+
+### What is kube-scheduler?
+
+- **kube-scheduler** = default Kubernetes scheduler.
+
+- Job: **decide which node will run a Pod.**
+
+### Scheduling process:
+
+1. **Filter (Feasibility):**
+   
+   - Find all nodes that meet Pod’s requirements (CPU, memory, affinity/anti-affinity, taints/tolerations, etc.).
+   
+   - These are called **feasible nodes**.
+
+2. **Score:**
+   
+   - Each feasible node is given a **score** (based on policies like resource usage, spreading, etc.).
+   
+   - The **highest scoring node** is chosen.
+
+3. **Bind:**
+   
+   - Scheduler sends its decision to the **API server** in a process called **binding**.
+   
+   - Then the **kubelet** on that node creates the Pod.
+
+### Scheduler Performance Tuning (for large clusters):
+
+- In **small clusters**, scheduler can check *all* nodes → accurate but slower for large clusters.
+
+- In **large clusters**, we can tune:
+  
+  - **Percentage of nodes to check** (instead of all).
+  
+  - **Parallelism** (how many scheduling operations can run at once).
+  
+  - **Profiles/Plugins** (customize scheduling behavior).
+
+👉 This balances **latency vs accuracy**:
+
+- **Latency** = how fast Pods get scheduled.
+
+- **Accuracy** = how optimal the placement is.
+
+📌 **Memory Tip:**  
+Think of kube-scheduler as a **job recruiter**:
+
+- First filter out candidates who don’t meet requirements.
+
+- Then score the shortlisted candidates.
+
+- Pick the top one and hire (bind).
+
+### 🔹 `percentageOfNodesToScore`
+
+- Defines what **percentage of cluster nodes** the scheduler checks before scoring.
+
+- Example: If set to **50**, the scheduler only checks **half of the nodes** (randomly selected), instead of all.
+
+- 👉 **Memory tip:** *“More nodes checked = better accuracy, fewer nodes checked = faster scheduling.”*
+
+### 🔹 Common Tuning Parameters
+
+1. **`percentageOfNodesToScore`**
+   
+   - Default: **50** (checks 50% of nodes).
+   
+   - Range: **1–100**.
+   
+   - Example:
+     
+     - Cluster has 1,000 nodes.
+     
+     - `percentageOfNodesToScore = 30` → only **300 nodes** will be evaluated.
+
+2. **`parallelism`**
+   
+   - Controls how many Pods can be scheduled in **parallel**.
+   
+   - Higher value → faster scheduling, but more CPU usage.
+
+3. **`profiles` (scheduling profiles)**
+   
+   - You can define multiple scheduling profiles with **different rules/policies**.
+   
+   - Example: One profile optimized for **batch jobs**, another for **latency-sensitive apps**.
+
+4. **`plugins`**
+   
+   - Extend scheduling with custom logic (e.g., prefer GPU nodes, spread across zones).
+
+✅ **Super-simple Example**:
+
+- Cluster size = 1,000 nodes.
+
+- `percentageOfNodesToScore = 50` → scheduler checks **500 nodes**, not all 1,000.
+
+- Saves time but still likely finds a good fit.
+
+***
+
+### 🔹 Kubernetes Scheduling & Binding Workflow
+
+1. **Queue**
+   
+   - All unscheduled Pods wait in a **queue**.
+   
+   - Scheduler picks them one by one (or in batches).
+
+2. **Filter**
+   
+   - Scheduler **filters out nodes** that cannot run the Pod.
+   
+   - Uses **plugins, predicates, filters**.
+   
+   - Result: a list of **feasible nodes**.
+   
+   - Example: Out of 10 nodes, only 3 support WebAssembly → those 3 are feasible.
+
+3. **Score**
+   
+   - Scheduler **ranks feasible nodes**.
+   
+   - Higher score = better placement.
+   
+   - Factors:
+     
+     - Node already has the Pod’s image → **faster startup** → higher score.
+     
+     - Node has more free resources → higher score.
+     
+     - Affinity / anti-affinity → adjusted score.
+     
+     - Taints & tolerations → can allow or block.
+
+4. **Binding**
+   
+   - Scheduler picks the **highest-scoring node**.
+   
+   - Sends the decision to the **API Server** (called **binding**).
+   
+   - The **kubelet** on that node then creates the Pod.
+
+✅ **Corrected Example:**
+
+- Cluster = 10 nodes.
+
+- Pod = WASM workload.
+
+- **Filter:** Only 3 nodes support WASM → feasible nodes = Node2, Node5, Node8.
+
+- **Score:**
+  
+  - Node2: already has WASM image → score 9.
+  
+  - Node5: lots of free CPU/memory → score 7.
+  
+  - Node8: limited resources → score 4.
+
+- **Binding:** Pod scheduled to **Node2** (highest score = 9).
+
+📌 **Memory Tip:**  
+Think like a **job interview**:
+
+- Queue = candidates waiting.
+
+- Filter = who is eligible.
+
+- Score = who is best fit.
+
+- Binding = hire the top candidate.
+
+***
+
+***
+
+🔹 Pod Scheduling & Scheduling Gates
+
+### What are Scheduling Gates?
+
+- **SchedulingGates** are markers that **hold back a Pod from being scheduled**.
+
+- Until all SchedulingGates are cleared, the Pod **cannot be scheduled**.
+
+- Used to **pause scheduling** until some condition (like autoscaler action, resource availability, or policy checks) is satisfied.
+
+**Pod Scheduling Readiness Flow**
+
+```yaml
+Pod Created
+     ↓
+Check SchedulingGates
+     ↓
+IF empty → Pod is ready for scheduling → Pod scheduled → Running
+IF not empty → Pod status = SchedulingGated (stuck until gates are removed)
+```
+
+### Why use Scheduling Gates?
+
+- Reduce unnecessary **load on the scheduler**.
+
+- Example:
+  
+  - Cluster Autoscaler is adding new nodes.
+  
+  - Without gates → Scheduler keeps retrying Pods on unavailable nodes (wasteful loop).
+  
+  - With gates → Pods wait until gates are cleared → Scheduler only works when resources are ready.
+
+- Gates can be **added/removed via Admission Webhooks** or manually.
+
+Example Pod with Scheduling Gate : podschedulereadiness.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-pod
+spec:
+  schedulingGates:
+  - name: saiyam
+  containers:
+  - name: pause
+    image: registry.k8s.io/pause:3.6
+```
+
+**commands:**
+
+```powershell
+# Apply pod with a scheduling gate
+kubectl apply -f podschedulereadiness.yaml
+
+# Pod will be stuck in SchedulingGated state
+kubectl get pods
+
+# Remove SchedulingGates (edit pod spec and delete the gate entry)
+kubectl edit pod demo-pod     
+
+# OR using kubectl edit or vi edit manually
+# remove SchedulingGates with name saiyam.
+vi podschedulereadiness
+
+# OR re-apply YAML without schedulingGates
+kubectl apply -f podschedulereadiness.yaml
+
+# Now the Pod will be scheduled and Running
+kubectl get pods
+```
+
+✅ **Corrected Notes:**
+
+- `SchedulingGated` status = Pod is waiting because a scheduling gate is present.
+
+- Once you **remove the scheduling gate**, Pod becomes **SchedulingReady** → then scheduler places it on a node.
+
+📌 **Memory Tip:**  
+Think of a **traffic light** 🚦:
+
+- Red light = SchedulingGate present (Pod cannot move).
+
+- Green light = SchedulingGate removed → Pod moves forward to scheduling.
+
+***
+
+***
+
+# 🔹 What is `topologySpreadConstraints`?
+
+- It’s a **Pod scheduling rule** in Kubernetes.
+
+- It tells the scheduler **how to spread pods evenly** across nodes, zones, racks, etc.
+
+- Goal = **high availability (HA)** and **fault tolerance** by avoiding putting all pods in one place.
+
+👉 Example: 3 replicas of your app → 3 nodes in 3 zones → each pod goes to a different zone.
+
+# 🔹 How does it work?
+
+When you create a Deployment (or StatefulSet, Job, etc.), you can add:
+
+```yaml
+topologySpreadConstraints:
+- maxSkew: <number>
+  topologyKey: <node label>
+  whenUnsatisfiable: <action>
+  labelSelector: <pod selector>
+```
+
+The scheduler looks at:
+
+1. **labelSelector** → which pods are part of this group.
+
+2. **topologyKey** → which node label to use (e.g., `kubernetes.io/hostname` = node, `topology.kubernetes.io/zone` = zone).
+
+3. **maxSkew** → how evenly pods should be spread.
+
+4. **whenUnsatisfiable** → what to do if spreading is not possible.
+
+# 🔹 Fields Explained (Easy)
+
+### ✅ `maxSkew`
+
+- Means “how much imbalance is allowed between groups”.
+
+- Must be ≥ 1.
+
+- Example: `maxSkew: 1` → if one node has 2 pods, others must have either 1 or 2 (difference ≤1).
+
+### ✅ `topologyKey`
+
+- Which **node label** to use for spreading.
+
+- Common values:
+  
+  - `kubernetes.io/hostname` → spread across **nodes**.
+  
+  - `topology.kubernetes.io/zone` → spread across **zones**.
+  
+  - `topology.kubernetes.io/region` → spread across **regions**.
+
+check labels :
+
+```powershell
+kubectl get nodes --show-labels
+```
+
+### ✅ `whenUnsatisfiable`
+
+- What to do if pods can’t be evenly spread.
+
+- Options:
+  
+  - **DoNotSchedule** → scheduler refuses to place the pod.
+  
+  - **ScheduleAnyway** → scheduler places the pod even if balance is broken.
+
+### ✅ `labelSelector`
+
+- Tells which pods this rule applies to.
+
+- Usually matches your Deployment label (`app: demo-app`).
+
+**🔹 Example: Deployment with Spread**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      containers:
+      - name: app-container
+        image: nginx
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: "kubernetes.io/hostname"
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: demo-app
+```
+
+# 🔹 Walkthrough (Your Example with 3 Nodes)
+
+1. Cluster: 3 nodes (zoneA, zoneB, zoneC).
+
+2. Deployment: 3 replicas.
+
+3. `topologyKey: zone` + `maxSkew: 1`.
+   
+   - Pod1 → node1 (zoneA).
+   
+   - Pod2 → node2 (zoneB).
+   
+   - Pod3 → node3 (zoneC).
+   
+   - Perfect distribution ✅.
+
+Scale up to 6:
+
+- Scheduler ensures ~2 pods per zone.
+
+- Max difference allowed = 1 (`maxSkew: 1`).
+
+If one node is cordoned/unavailable:
+
+- Scheduler may block new pods (`DoNotSchedule`) OR place them anyway (`ScheduleAnyway`).
+
+**Commands-Recap**
+
+```powershell
+# Check node labels (zones/hostnames)
+kubectl get nodes --show-labels
+
+# Apply deployment
+kubectl apply -f topology.yaml
+
+# Check pod distribution
+kubectl get pods -o wide
+
+# Scale up
+kubectl scale deploy demo-app --replicas=6
+
+# Block scheduling on a node
+kubectl cordon controlplane
+
+# Unblock scheduling
+kubectl uncordon controlplane   
+
+kubectl get pods -owide
+```
+
+# 🧠 Easy-to-Remember Trick
+
+- **maxSkew = imbalance allowed** (like tolerance).
+
+- **topologyKey = spread dimension** (node/zone/region).
+
+- **whenUnsatisfiable = action if stuck**.
+
+- **labelSelector = which pods to count**.
+
+👉 Think of it like **seating friends in a theater 🎭**:
+
+- Spread them across rows (`topologyKey`).
+
+- Don’t let one row get too crowded (`maxSkew`).
+
+- If full: either block entry (`DoNotSchedule`) or let them sit anywhere (`ScheduleAnyway`).
+
+***
+
+***
+
+# 🔹 What is `PriorityClass`?
+
+- A **32-bit integer** that decides **importance of a pod**.
+
+- **Higher number = higher priority**.
+
+- If the cluster is out of resources, **low-priority pods are evicted** to make room for high-priority ones.
+
+👉 Used for **critical apps** that must run even if it means killing other workloads.
+
+# 🔹 Default Priority
+
+- If you don’t set any priority, pods run with **default (normal) priority**.
+
+- System already has two special priorities:
+  
+  - `system-cluster-critical` → for core cluster services (e.g. kube-dns).
+  
+  - `system-node-critical` → for node-level critical services (e.g. kubelet helper pods).
+
+⚠️ Never use these for your own apps. They’re reserved for Kubernetes components.
+
+# 🔹 Example Scenario
+
+Cluster has 4 nodes:
+
+- node01 → 4 pods
+
+- node02 → 5 pods
+
+- node03 → 3 pods
+
+- node04 → 5 pods
+
+All pods = **default priority**.  
+Now → you need to run a **mission-critical app**.
+
+- If there are no free resources → scheduler checks priorities.
+
+- Pods with **lower priority** will be evicted to make space.
+
+- Your mission-critical pod runs because it has **higher PriorityClass**.
+
+# 🔹 Create a PriorityClass
+
+priorityclass.yaml :
+
+```yaml
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: mission-critical-priority
+value: 1000000   # Higher than normal
+globalDefault: false
+description: "Priority class for mission-critical workloads"
+```
+
+🔹 Use PriorityClass in a Pod/Deployment :
+
+priority-pod.yaml:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: critical-app
+spec:
+  priorityClassName: mission-critical-priority
+  containers:
+  - name: nginx
+    image: nginx
+```
+
+👉 observe **priorityClassName** used is same from above that we created. priorityClassName should match when we use in Pod/Deployment.
+
+COMMANDS :
+
+```powershell
+kubectl apply -f priorityclass.yaml
+
+kubectl get priorityclass -A
+
+# this pod is with priorityclass so this pod will run even if the resource are not available and when we scale up this pod then also it will run even if the resources are not available by evicting the low priority pods
+kubectl apply -f priority-pod.yaml
+
+kubectl get pod
+```
+
+# 🔹 Key Points to Remember
+
+- **Bigger value = more important**.
+
+- Used when **resources are tight** → evicts lower-priority pods.
+
+- Don’t use system critical priorities → make your own.
+
+- Normal apps = default priority.
+
+# 🧠 Memory Trick
+
+Think of it like **hospital emergency triage 🚑**:
+
+- Normal patients wait in line (default priority).
+
+- Critical patient (mission-critical app) gets treated first, even if others are sent away (pods evicted).
+
+***
+
+***
+
+
+
+# 🔹 What is Pod Overhead?
+
+- Some runtimes (like **gVisor, Kata Containers, Firecracker**) use **extra CPU/memory** for isolation and security.
+
+- This extra cost = **Pod Overhead**.
+
+- Kubernetes adds this overhead to the Pod’s requests → so scheduler accounts for **pod request + runtime overhead** together.
+
+
+
+# 🔹 Why is it Needed?
+
+Without Pod Overhead:
+
+- Scheduler may think enough resources are free.
+
+- But runtime itself consumes extra → leading to **overcommit & crashes**.
+
+With Pod Overhead:
+
+- Scheduler makes **accurate decisions**.
+
+- Ensures node doesn’t get overloaded.
+
+
+
+# 🔹 How It Works
+
+1. Define a **RuntimeClass** with overhead.
+
+2. Pod uses that RuntimeClass.
+
+3. Scheduler = Pod Requests + Overhead.
+
+
+
+# 🔹 Example
+
+**RuntimeClass with overhead:**
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: kata
+handler: kata
+overhead:
+  podFixed:
+    memory: "120Mi"
+    cpu: "100m"
+```
+
+Pod using RuntimeClass:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-pod
+spec:
+  runtimeClassName: kata
+  containers:
+  - name: app
+    image: nginx
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "256Mi"
+```
+
+🔹 Total resources scheduler sees =  
+200m (container) + 100m (overhead) = **300m CPU**  
+256Mi (container) + 120Mi (overhead) = **376Mi memory**
+
+
+
+# 🔹 Simple Use Cases
+
+- **Secure runtimes** (gVisor/Kata/Firecracker).
+
+- **Multi-tenant clusters** → prevent noisy-neighbor issues.
+
+- **Accurate resource accounting** for autoscalers.
+
+
+
+# 🧠 Easy Memory Trick
+
+Think of Pod Overhead like **packing your suitcase ✈️**:
+
+- Clothes = your app’s resource requests.
+
+- Bag weight (overhead) = runtime cost.
+
+- At airport (scheduler), total = clothes + bag.
+
+***
+
+***
+
+
+
+NodeAffinity is used for altering scheduling
+Taints & Tolerations is used for altering scheduling
+nodeselector for altering scheduling
+nodename for altering scheduling
+
+
+
+```powershell
+kubectl delete deploy --all
+
+kubectl delete deploy -A
+```
+
+
+
+# 📝 Node Affinity — Simple Notes
+
+🔹 **What it is?**
+
+- Like `nodeSelector`, but more powerful.
+
+- Lets you tell **which nodes your pod can run on** based on **node labels**.
+
+- Two modes:
+  
+  1. **requiredDuringSchedulingIgnoredDuringExecution** → **HARD rule**. Must match.
+  
+  2. **preferredDuringSchedulingIgnoredDuringExecution** → **SOFT rule**. Best effort.
+
+
+
+🔹 **Key Points to Remember**
+
+- **Required** = If no node matches → Pod stays **Pending**.
+
+- **Preferred** = Pod schedules anyway, but will **prefer labeled nodes** if available.
+
+- “IgnoredDuringExecution” → means labels are only checked **at scheduling time**, not later.
+
+
+
+**Example yaml NodeAffinity :**
+
+nodeaffinity.yaml : 
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+  - name: mycontainer
+    image: nginx
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: "topology.kubernetes.io/region"
+            operator: In
+            values:
+            - "us-east-1"         # MUST be on node with this region
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: "disktype"
+            operator: In
+            values:
+            - "ssd"               # If multiple nodes match, prefer SSD
+
+```
+
+🔹 **Demo Flow (Commands)**
+
+1. Apply pod with node affinity:
+   
+   ```powershell
+   # Apply pod with node affinity:
+   kubectl apply -f nodeaffinity.yaml
+   
+   # Pod will be Pending because no node has matching labels:
+   kubectl get pods
+   
+   kubectl describe pod mypod
+   
+   kubectl get nodes --show-labels
+   
+   # Label a node:
+   kubectl label node node01 topology.kubernetes.io/region=us-east-1
+   
+   kubectl label node controlplane topology.kubernetes.io/region=us-east-1
+   
+   kubectl get nodes --show-labels
+   
+   # Pod should now schedule on that node.
+   # Add preferred label:
+   kubectl label node node01 disktype=ssd
+   
+   
+   ```
+   
+   👉 Pod prefers SSD nodes if multiple nodes match.
+   - Flow simplified: first pod pending → then add labels → then pod runs.
+   
+   - Added **memory trick** to make it stick.
+
+
+
+🔹 **Quick Memory Trick**
+
+- **Required = MUST HAVE label.**
+
+- **Preferred = NICE TO HAVE label.**
+
+- **IgnoredDuringExecution = only checked at START, not later.**
+
+
+
+Node Affinity is a property of Pods that attracts them to a set of nodes(either as a preference or a hard requirement).
+
+
+
+****
+
+****
+
+# 📝 Taints & Tolerations — Easy Notes
+
+🔹 **Definition**
+
+- **Taint = repel pods** (mark node as “restricted”).
+
+- **Toleration = allow pod** to accept that taint and run there.
+
+- Together, they control **which pods can run on which nodes**.
+
+
+
+🔹 **Operators**
+
+- `Equal` → match key/value exactly.
+
+- `Exists` → key must exist, value ignored.
+
+- `NoValueReq` → (default) tolerates taint just by key.
+
+
+
+🔹 **Effects**
+
+- `NoSchedule` → Pod **won’t schedule** here unless it tolerates taint.
+
+- `PreferNoSchedule` → Pod tries to avoid, but may schedule if no other choice.
+
+- `NoExecute` → Existing pods **without toleration are evicted**, new pods not scheduled.
+
+
+
+🔹 **Use Cases**
+
+1. **Dedicated Nodes** → e.g. GPU nodes only for ML pods.
+
+2. **Special Hardware** → e.g. SSD-only workloads.
+
+3. **Taint-based Evictions (NoExecute)** → push pods away from unhealthy nodes.
+
+
+
+A cluster with controlplane and three nodes and one node is setup with taint(foo=bar:NoSchedule). scheduler schedules pod and checks taints i.e. foo=bar:NoSchedule here a POD with toleration i.e. Key:"foo", operator:"Equal" and value:"bar" and effect:"NoSchedule" will schedule on this node which is tainted with foo=bar:NoSchedule.
+
+
+
+if node is tainted with NoExecute Effect then suppose if a node has two running pods and there is no toleration and suppose node is tainted with Effect NoExecute then pod running from earlier will be evicted if tainted and only matching toleration specified pod will run at the node.
+
+
+
+🔹 **Example Pod (Toleration)**
+
+toleration.yaml :
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-tolerations
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  tolerations:
+  - key: "app"
+    operator: "Equal"
+    value: "demo"
+    effect: "NoSchedule"
+
+```
+
+
+
+🔹 **Correct Demo Flow (Commands)**
+
+Commands :
+
+```powershell
+# Apply pod with toleration
+kubectl apply -f toleration.yaml
+
+kubectl get pods
+
+kubectl delete -f toleration.yaml
+
+# till now there is no taint on our nodes so lets taint our node01
+# Taint a node
+kubectl taint nodes node01 app=demo:NoSchedule
+
+# Now only pods with matching toleration can run there.
+
+kubectl get nodes
+
+kubectl get pods
+
+kubectl cordon controlplane
+
+# Test scheduling without toleration
+kubectl run abc --image=nginx
+
+kubectl get nodes
+
+# only node01 where pod can schedule since controlplane is cordoned
+# but node01 is tainted  so pod with toleration matching to node01 taint will run
+kubectl get pods
+
+kubectl describe pod abc
+
+# Schedule with toleration
+# node01 is tainted with app=demo:NoSchedule so a matching pod with toleration will run on node01
+kubectl apply -f toleration.yaml
+
+kubectl get pods
+
+# here node is tainted with effect NoExecute so earlier running pod will evvict and pod with toleration where effect does not matchup
+kubectl taint nodes node01 app=demo:NoExecute
+
+kubectl get pods
+
+kubectl get pods -owide
+```
+
+Now only pods with matching toleration can run there.
+
+3. Test scheduling without toleration:
+   
+   ```powershell
+   kubectl run abc --image=nginx
+   kubectl get pods
+   kubectl describe pod abc   # should stay Pending (no matching toleration)
+   
+   ```
+4. Schedule with toleration:
+
+```powershell
+ kubectl apply -f toleration.yaml
+kubectl get pods -o wide   # this pod should run on node01
+
+```
+
+5. Try **NoExecute effect**:
+
+```powershell
+kubectl taint nodes node01 app=demo:NoExecute --overwrite
+kubectl get pods -o wide   # old pods w/o toleration are evicted
+
+```
+
+`--overwrite` is needed if you reapply taint with new effect.
+
+`Equal` isn’t always used → in practice `Exists` is common.
+
+🔹 **Quick Memory Trick**
+
+- **Taint = Blocker** 🚫
+
+- **Toleration = Pass/Key** ✅
+
+- **NoSchedule = Won’t start**
+
+- **PreferNoSchedule = Avoid if possible**
+
+- **NoExecute = Evict running pods too**
