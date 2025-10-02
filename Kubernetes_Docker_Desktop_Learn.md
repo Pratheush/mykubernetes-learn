@@ -4061,8 +4061,6 @@ Think of it like **hospital emergency triage 🚑**:
 
 ***
 
-
-
 # 🔹 What is Pod Overhead?
 
 - Some runtimes (like **gVisor, Kata Containers, Firecracker**) use **extra CPU/memory** for isolation and security.
@@ -4070,8 +4068,6 @@ Think of it like **hospital emergency triage 🚑**:
 - This extra cost = **Pod Overhead**.
 
 - Kubernetes adds this overhead to the Pod’s requests → so scheduler accounts for **pod request + runtime overhead** together.
-
-
 
 # 🔹 Why is it Needed?
 
@@ -4087,8 +4083,6 @@ With Pod Overhead:
 
 - Ensures node doesn’t get overloaded.
 
-
-
 # 🔹 How It Works
 
 1. Define a **RuntimeClass** with overhead.
@@ -4096,8 +4090,6 @@ With Pod Overhead:
 2. Pod uses that RuntimeClass.
 
 3. Scheduler = Pod Requests + Overhead.
-
-
 
 # 🔹 Example
 
@@ -4137,8 +4129,6 @@ spec:
 200m (container) + 100m (overhead) = **300m CPU**  
 256Mi (container) + 120Mi (overhead) = **376Mi memory**
 
-
-
 # 🔹 Simple Use Cases
 
 - **Secure runtimes** (gVisor/Kata/Firecracker).
@@ -4146,8 +4136,6 @@ spec:
 - **Multi-tenant clusters** → prevent noisy-neighbor issues.
 
 - **Accurate resource accounting** for autoscalers.
-
-
 
 # 🧠 Easy Memory Trick
 
@@ -4163,22 +4151,16 @@ Think of Pod Overhead like **packing your suitcase ✈️**:
 
 ***
 
-
-
 NodeAffinity is used for altering scheduling
 Taints & Tolerations is used for altering scheduling
 nodeselector for altering scheduling
 nodename for altering scheduling
-
-
 
 ```powershell
 kubectl delete deploy --all
 
 kubectl delete deploy -A
 ```
-
-
 
 # 📝 Node Affinity — Simple Notes
 
@@ -4194,8 +4176,6 @@ kubectl delete deploy -A
   
   2. **preferredDuringSchedulingIgnoredDuringExecution** → **SOFT rule**. Best effort.
 
-
-
 🔹 **Key Points to Remember**
 
 - **Required** = If no node matches → Pod stays **Pending**.
@@ -4203,8 +4183,6 @@ kubectl delete deploy -A
 - **Preferred** = Pod schedules anyway, but will **prefer labeled nodes** if available.
 
 - “IgnoredDuringExecution” → means labels are only checked **at scheduling time**, not later.
-
-
 
 **Example yaml NodeAffinity :**
 
@@ -4236,7 +4214,6 @@ spec:
             operator: In
             values:
             - "ssd"               # If multiple nodes match, prefer SSD
-
 ```
 
 🔹 **Demo Flow (Commands)**
@@ -4264,14 +4241,13 @@ spec:
    # Pod should now schedule on that node.
    # Add preferred label:
    kubectl label node node01 disktype=ssd
-   
-   
    ```
-   
-   👉 Pod prefers SSD nodes if multiple nodes match.
-   - Flow simplified: first pod pending → then add labels → then pod runs.
-   
-   - Added **memory trick** to make it stick.
+
+👉 Pod prefers SSD nodes if multiple nodes match.
+
+- Flow simplified: first pod pending → then add labels → then pod runs.
+
+
 
 
 
@@ -4283,15 +4259,13 @@ spec:
 
 - **IgnoredDuringExecution = only checked at START, not later.**
 
-
-
 Node Affinity is a property of Pods that attracts them to a set of nodes(either as a preference or a hard requirement).
 
+---
+
+---
 
 
-****
-
-****
 
 # 📝 Taints & Tolerations — Easy Notes
 
@@ -4303,8 +4277,6 @@ Node Affinity is a property of Pods that attracts them to a set of nodes(either 
 
 - Together, they control **which pods can run on which nodes**.
 
-
-
 🔹 **Operators**
 
 - `Equal` → match key/value exactly.
@@ -4313,8 +4285,6 @@ Node Affinity is a property of Pods that attracts them to a set of nodes(either 
 
 - `NoValueReq` → (default) tolerates taint just by key.
 
-
-
 🔹 **Effects**
 
 - `NoSchedule` → Pod **won’t schedule** here unless it tolerates taint.
@@ -4322,8 +4292,6 @@ Node Affinity is a property of Pods that attracts them to a set of nodes(either 
 - `PreferNoSchedule` → Pod tries to avoid, but may schedule if no other choice.
 
 - `NoExecute` → Existing pods **without toleration are evicted**, new pods not scheduled.
-
-
 
 🔹 **Use Cases**
 
@@ -4335,9 +4303,9 @@ Node Affinity is a property of Pods that attracts them to a set of nodes(either 
 
 
 
+
+
 A cluster with controlplane and three nodes and one node is setup with taint(foo=bar:NoSchedule). scheduler schedules pod and checks taints i.e. foo=bar:NoSchedule here a POD with toleration i.e. Key:"foo", operator:"Equal" and value:"bar" and effect:"NoSchedule" will schedule on this node which is tainted with foo=bar:NoSchedule.
-
-
 
 if node is tainted with NoExecute Effect then suppose if a node has two running pods and there is no toleration and suppose node is tainted with Effect NoExecute then pod running from earlier will be evicted if tainted and only matching toleration specified pod will run at the node.
 
@@ -4355,13 +4323,12 @@ metadata:
 spec:
   containers:
   - name: nginx
-    image: nginx
+ image: nginx
   tolerations:
   - key: "app"
-    operator: "Equal"
-    value: "demo"
-    effect: "NoSchedule"
-
+ operator: "Equal"
+ value: "demo"
+ effect: "NoSchedule"
 ```
 
 
@@ -4423,14 +4390,13 @@ Now only pods with matching toleration can run there.
    kubectl run abc --image=nginx
    kubectl get pods
    kubectl describe pod abc   # should stay Pending (no matching toleration)
-   
    ```
+
 4. Schedule with toleration:
 
 ```powershell
  kubectl apply -f toleration.yaml
 kubectl get pods -o wide   # this pod should run on node01
-
 ```
 
 5. Try **NoExecute effect**:
@@ -4438,7 +4404,6 @@ kubectl get pods -o wide   # this pod should run on node01
 ```powershell
 kubectl taint nodes node01 app=demo:NoExecute --overwrite
 kubectl get pods -o wide   # old pods w/o toleration are evicted
-
 ```
 
 `--overwrite` is needed if you reapply taint with new effect.
@@ -4456,3 +4421,15 @@ kubectl get pods -o wide   # old pods w/o toleration are evicted
 - **PreferNoSchedule = Avoid if possible**
 
 - **NoExecute = Evict running pods too**
+
+
+
+___
+
+___
+
+---
+
+
+
+**<mark>PART-6 : DEPLOYMENTS, REPLICASET, PROBES, DEPLOYMENT STRATEGIES</mark>**
