@@ -4247,10 +4247,6 @@ spec:
 
 - Flow simplified: first pod pending → then add labels → then pod runs.
 
-
-
-
-
 🔹 **Quick Memory Trick**
 
 - **Required = MUST HAVE label.**
@@ -4264,8 +4260,6 @@ Node Affinity is a property of Pods that attracts them to a set of nodes(either 
 ---
 
 ---
-
-
 
 # 📝 Taints & Tolerations — Easy Notes
 
@@ -4301,15 +4295,9 @@ Node Affinity is a property of Pods that attracts them to a set of nodes(either 
 
 3. **Taint-based Evictions (NoExecute)** → push pods away from unhealthy nodes.
 
-
-
-
-
 A cluster with controlplane and three nodes and one node is setup with taint(foo=bar:NoSchedule). scheduler schedules pod and checks taints i.e. foo=bar:NoSchedule here a POD with toleration i.e. Key:"foo", operator:"Equal" and value:"bar" and effect:"NoSchedule" will schedule on this node which is tainted with foo=bar:NoSchedule.
 
 if node is tainted with NoExecute Effect then suppose if a node has two running pods and there is no toleration and suppose node is tainted with Effect NoExecute then pod running from earlier will be evicted if tainted and only matching toleration specified pod will run at the node.
-
-
 
 🔹 **Example Pod (Toleration)**
 
@@ -4330,8 +4318,6 @@ spec:
  value: "demo"
  effect: "NoSchedule"
 ```
-
-
 
 🔹 **Correct Demo Flow (Commands)**
 
@@ -4422,14 +4408,10 @@ kubectl get pods -o wide   # old pods w/o toleration are evicted
 
 - **NoExecute = Evict running pods too**
 
-
-
 ___
 
 ___
 
 ---
-
-
 
 **<mark>PART-6 : DEPLOYMENTS, REPLICASET, PROBES, DEPLOYMENT STRATEGIES</mark>**

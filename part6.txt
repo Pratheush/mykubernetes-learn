@@ -1,3 +1,623 @@
 
 DEPLOYMENTS, REPLICASET, PROBES, DEPLOYMENT STRATEGIES
 
+
+Replication-Controller nobody uses it ReplicaSets is preffered.
+ReplicaSets is not used DEPLOYMENT is used instead.
+
+ReplicaSets maintains and runs Replicas and make sure that replicas runs properly.
+
+Using Ingress Controller we can define how traffic splitting should happen, how distribution mechanism should work
+there is now gateway api natively in kubernetes. Ingress Controller usis this implementing this.
+
+what is traffic splitting? how it works and where and when it is used. use-cases ? (HTTPRoute is kind in yaml file)
+
+
+ReplicationSetController maintains replicas of REPLICASETs
+
+when we have to update application or modify application or we have to do other things then we need higher-level construct which manages REPLICASET. that we call DEPLOYMENT
+
+
+DEPLOYMENT is higher level to manages ReplicaSet
+
+DEPLOYMENT is a kubernetes object.
+ReplicaSet is a kubernetes object.
+
+
+we Can have non-homogeneous pods
+1. create ReplicaSets (nginx-rs.yaml)
+2. create pod (with label matching ReplicaSets) (pod-rs.yaml)
+we Can use faulty pod out for Debugging (we can do that by changing labels of the existing running pod of replicaset)
+
+
+cat nginx-rs.yaml:
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:           # this REPLICASET's metadata and its name is given below as in name : nginx-rs
+  name: nginx-rs
+  labels:
+    app: nginx      # label of replicaset is nginx
+spec:
+  replicas: 3       # run 3 replicas of given below in selector and template and spec section containers
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+
+
+cat pod-rs.yaml :
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+
+
+
+
+kubectl create -f nginx-rs.yaml
+
+kubectl get pods
+
+# getting replicaset
+kubectl get rs
+
+kubectl get pods --show-labels
+
+# watching the pods lively running
+kubectl get pods -w
+
+# running pod but with same label that as defined in replicaset
+kubectl apply -f pod-rs.yaml
+
+now as we observe in -w watching mode :
+when we run nginx-rs 3 replicas were running but now a new pod has come with same label as in replicaset and scheduler has scheduled it but it is in pending status now as when pod-rs.yaml run it goes for container-creating and it attaches with replicaset and replicaset sees that it needed 3 replicas but 4 came now so it terminated the replica that came and new pod is terminated.
+
+
+NOW lets do it in reverse order :
+i.e.
+
+kubectl delete -f nginx-rs.yaml
+
+# make sure no pod is running
+kubectl get pods
+
+kubectl apply -f pod-rs.yaml
+
+# every 2 seconds it refresh and watches running pods like live view.
+kubectl get pods -w
+
+kubectl apply -f nginx-rs.yaml
+
+# you will see 3 replicas
+kubectl get rs
+
+# you will see 3 pods running
+kubectl get pods
+
+
+
+
+
+
+COMMANDS ::::::
+controlplane:~$ kubectl get pods -w
+NAME             READY   STATUS    RESTARTS   AGE
+nginx-rs-54b9k   1/1     Running   0          14m
+nginx-rs-cjh79   1/1     Running   0          14m
+nginx-rs-rrjq8   1/1     Running   0          14m
+nginx-pod        0/1     Pending   0          0s
+nginx-pod        0/1     Pending   0          0s
+nginx-pod        0/1     Pending   0          0s
+nginx-pod        0/1     Terminating   0          0s
+nginx-pod        0/1     Terminating   0          0s
+nginx-pod        0/1     ContainerStatusUnknown   0          1s
+nginx-pod        0/1     ContainerStatusUnknown   0          1s
+nginx-pod        0/1     ContainerStatusUnknown   0          1s
+^Ccontrolplane:~$ cd Kubernetes-hindi-bootcamp/part6
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl delete -f nginx-rs.yaml
+replicaset.apps "nginx-rs" deleted
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl get pods
+No resources found in default namespace.
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl apply -f pod-rs.yaml
+pod/nginx-pod created
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl get pods -w
+NAME        READY   STATUS    RESTARTS   AGE
+nginx-pod   1/1     Running   0          7s
+nginx-pod   1/1     Running   0          18s
+nginx-rs-w7tbj   0/1     Pending   0          0s
+nginx-rs-w7tbj   0/1     Pending   0          0s
+nginx-rs-fgdqb   0/1     Pending   0          0s
+nginx-rs-fgdqb   0/1     Pending   0          0s
+nginx-rs-w7tbj   0/1     ContainerCreating   0          0s
+nginx-rs-fgdqb   0/1     ContainerCreating   0          0s
+nginx-rs-w7tbj   0/1     ContainerCreating   0          1s
+nginx-rs-fgdqb   0/1     ContainerCreating   0          1s
+nginx-rs-w7tbj   1/1     Running             0          2s
+nginx-rs-fgdqb   1/1     Running
+
+
+when we reverse it and ran pod-rs.yaml and then nginx-rs.yaml then you will see that first one ran nginx-pod and is running and interestingly when we ran nginx-rs.yaml it tried to ran 3 replicas but one pod was pending and other two pod of nginx-rs.yaml is running as all the pod label name share same name so as per replicaset 3 pods are running and when we see using get pods then we see 2 pods from nginx-rs.yaml and 1 pod from pod-rs.yaml is running.
+
+
+
+kubectl proxy --port=8080
+
+🧠 Simple Explanation:
+It creates a secure tunnel between your local machine and the Kubernetes cluster’s API server — so you can interact with the cluster using REST API calls from your browser or tools like curl.
+
+🧪 Example Use Case:
+After running this command, you can open your browser and visit:
+
+http://localhost:8080/api/
+
+This will show the Kubernetes API endpoints — useful for debugging, automation, or exploring the cluster.
+
+🔐 Bonus:
+It uses your current kubectl authentication, so you don’t need to manually handle tokens or certificates.
+
+
+
+kubectl proxy --port=8080
+
+curl -X DELETE 'http://localhost:8080/apis/apps/v1/namespaces/default/replicasets/nginx-rs' \
+     -d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Foreground"}' \
+     -H "Content-Type: application/json"
+
+curl -X DELETE 'http://localhost:8080/apis/apps/v1/namespaces/default/replicasets/nginx-rs' \
+     -d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Background"}' \
+     -H "Content-Type: application/json"
+
+curl -X DELETE 'http://localhost:8080/apis/apps/v1/namespaces/default/replicasets/nginx-rs' \
+     -d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Orphan"}' \
+     -H "Content-Type: application/json"
+
+
+
+HERE IN CURL COMMAND ::
+-X DELETE sending deleting request rest call
+apis : apps/v1
+namespace : default
+replicaset : nginx-rs
+-d tells data in we are sending ::
+        kind : DeleteOptions
+        apiVersion : v1
+        propagationPolicy : Foreground
+
+
+THere are 3 types of propagationPolicy :
+1. Foreground :
+1. Foreground propagation Policy means ReplicaSet enters deletion means ReplicaSet enters into deletion mode -> then pods gets deleted -> then replicaset get deleted(then parent deleted).
+
+2. Background propagation Policy : means Replicaset get deleted first then pods get deleted in Background through garbage collector which is kubernetes garbage-collector ( deletes parent immediately and then pods get deleted in background)
+
+3. ORPHAN propagation Policy  means Replicas get deleted immediately but pods not get deleted i.e. still pod will continue running
+
+
+
+kubectl apply -f nginx-rs.yaml
+
+kubectl proxy --port=8080
+
+kubectl get pods -w
+
+kubectl get rs -w
+
+NOW RUN ABOVE DELETE REST REQUEST CALLS ONE BY ONE.
+
+
+
+
+ReplicaSet SCALE DOWN FLOW from 1 to 5 :
+ 1. Pending First
+ 2. controller.Kubernetes.io/pd-deletion-
+    annotation -> lower value first
+ 3. pods on nodes with more replicas first
+ 4. recent pod created before later
+ 5. else random
+
+
+Imperative Deployment (Kubectl Command: kubectl create deploy mynginx --image nginx --replicas 3 --port 80)
+Declarative Deployment (using yaml file)
+
+DEPLOYMENTS :::
+
+kubectl create deploy bootcamp --image nginx --replicas 3 --port 80 --dry-run=client -oyaml
+
+#scale up
+kubectl scale deploy bootcamp --replicas 5
+
+# scale down
+kubectl scale deploy bootcamp --replicas 4
+
+
+
+kubectl create deploy mynginx --image nginx --replicas 3 --port 80
+
+when we run "kubectl create deploy .." above command then automatically STRATEGIES were added even when we not mention it but if we mention it then kubernetes will use our specified strategies.
+
+strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+
+RollingUpdate strategy we use it when we want zero downtime.
+
+
+# what does this --record do ? explain its usecase in simple few liner statements ?
+UPDATE AN IMAGE :
+kubectl set image deploy bootcamp nginx=nginx:1.14.a --record
+
+
+controlplane:~$ kubectl rollout history deploy/mynginx
+deployment.apps/mynginx
+REVISION  CHANGE-CAUSE
+1         <none>
+2         kubectl set image deploy mynginx nginx=nginx:1.14.a --record=true
+
+
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl rollout history deploy/bootcamp
+deployment.apps/bootcamp
+REVISION  CHANGE-CAUSE
+1         <none>
+2         kubectl set image deploy bootcamp nginx=nginx:1.14.a --record=true
+
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl delete deploy bootcamp
+deployment.apps "bootcamp" deleted
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl create deploy bootcamp --image nginx --replicas 3 --port 8080
+deployment.apps/bootcamp created
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl set image deploy bootcamp nginx=nginx:1.14.a
+deployment.apps/bootcamp image updated
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl rollout history deploy/bootcamp
+deployment.apps/bootcamp
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl create deploy bootcamp --image nginx --replicas 3 --port 8080
+deployment.apps/bootcamp created
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl set image deploy bootcamp nginx=nginx:1.14.a --record
+Flag --record has been deprecated, --record will be removed in the future
+deployment.apps/bootcamp image updated
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl set image deploy bootcamp nginx=nginx:1.14.b --record
+Flag --record has been deprecated, --record will be removed in the future
+deployment.apps/bootcamp image updated
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl rollout history deploy/bootcamp
+deployment.apps/bootcamp
+REVISION  CHANGE-CAUSE
+1         <none>
+2         kubectl set image deploy bootcamp nginx=nginx:1.14.a --record=true
+3         kubectl set image deploy bootcamp nginx=nginx:1.14.b --record=true
+
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl rollout status deployment/bootcamp
+Waiting for deployment "bootcamp" rollout to finish: 1 out of 3 new replicas have been updated...
+
+
+controlplane:~$ kubectl get pods
+NAME                        READY   STATUS             RESTARTS   AGE
+bootcamp-6f59f7fb79-2bnxj   1/1     Running            0          2m34s
+bootcamp-6f59f7fb79-85fbb   1/1     Running            0          2m34s
+bootcamp-6f59f7fb79-rg2wt   1/1     Running            0          2m34s
+bootcamp-dcdf857-ckrqk      0/1     ImagePullBackOff   0          2m
+nginx-rs-8sgkd              1/1     Running            0          22m
+nginx-rs-mz5v5              1/1     Running            0          22m
+nginx-rs-p89th              1/1     Running            0          22m
+
+
+controlplane:~$ kubectl rollout history deploy/bootcamp --revision=2
+deployment.apps/bootcamp with revision #2
+Pod Template:
+  Labels:       app=bootcamp
+        pod-template-hash=66cc84cd46
+  Annotations:  kubernetes.io/change-cause: kubectl set image deploy bootcamp nginx=nginx:1.14.a --record=true
+  Containers:
+   nginx:
+    Image:      nginx:1.14.a
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Environment:        <none>
+    Mounts:     <none>
+  Volumes:      <none>
+  Node-Selectors:       <none>
+  Tolerations:  <none>
+
+controlplane:~$ kubectl rollout history deploy/bootcamp --revision=3
+deployment.apps/bootcamp with revision #3
+Pod Template:
+  Labels:       app=bootcamp
+        pod-template-hash=dcdf857
+  Annotations:  kubernetes.io/change-cause: kubectl set image deploy bootcamp nginx=nginx:1.14.b --record=true
+  Containers:
+   nginx:
+    Image:      nginx:1.14.b
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Environment:        <none>
+    Mounts:     <none>
+  Volumes:      <none>
+  Node-Selectors:       <none>
+  Tolerations:  <none>
+
+controlplane:~$ kubectl rollout history deploy/bootcamp --revision=1
+deployment.apps/bootcamp with revision #1
+Pod Template:
+  Labels:       app=bootcamp
+        pod-template-hash=6f59f7fb79
+  Containers:
+   nginx:
+    Image:      nginx
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Environment:        <none>
+    Mounts:     <none>
+  Volumes:      <none>
+  Node-Selectors:       <none>
+  Tolerations:  <none>
+
+controlplane:~$ kubectl rollout undo deployment/bootcamp --to-revision=1
+deployment.apps/bootcamp rolled back
+
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl rollout status deployment/bootcamp
+Waiting for deployment "bootcamp" rollout to finish: 1 out of 3 new replicas have been updated...
+Waiting for deployment spec update to be observed...
+Waiting for deployment spec update to be observed...
+Waiting for deployment "bootcamp" rollout to finish: 1 old replicas are pending termination...
+deployment "bootcamp" successfully rolled out
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl rollout history deploy/bootcamp
+deployment.apps/bootcamp
+REVISION  CHANGE-CAUSE
+2         kubectl set image deploy bootcamp nginx=nginx:1.14.a --record=true
+3         kubectl set image deploy bootcamp nginx=nginx:1.14.b --record=true
+4         <none>
+
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ kubectl rollout status deployment/bootcamp
+deployment "bootcamp" successfully rolled out
+
+
+CHANGE-CAUSE we can add this through annotation.
+this tells that there was two REVISION. here CHANGE-CAUSE added through annotation or when we used --record while setting image then in CHANGE-CAUSE it was recorded otherwise if --record is not used then CHANGE-CAUSE can be added through annotation.
+
+so we can patch and add annotation when we update the deployment.
+
+Deployments are superset of REPLICASET.
+we created Deployment when we created deployment, replicaset created and when replicaset created it created pods.
+we can update images through deployment. we can provide rollingUpdate strategies through deployment.
+
+
+kubectl scale deployment/bootcamp --replicas=6
+
+kubectl rollout pause deployment/bootcamp
+
+
+
+FOR RECREATE ::
+
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ cat recreate.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-deployment
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+    spec:
+      containers:
+      - name: demo
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+
+kubectl apply -f recreate.yaml
+
+controlplane:~$ kubectl set image deployments/demo-deployment demo=nginx:14.0
+deployment.apps/demo-deployment image updated
+
+generally we don't do recreate because there is lot of downtime means the application we are running all the pods will terminate and die and then recreate and for new pods may be it will take time for creation.
+
+so there is difference between rollingUpdate and recreate-strategy in recreate there is a downtime.
+
+
+PROBES :
+when we deploy pod and traffic will go to pod as soon as we created service and expose it so what if pod is not ready to handle traffic or what if a specific file is not present which is required to run or what if there is some deadlock scenario occured when one pod is trying to write a file and another pod is also trying to write the same file which is a deadlock type scenario so in such scenarios to overcome this we use PROBES.
+
+why probes ?
+- Kubernetes sends traffic even if pod is not ready to handle it
+- Any deadlock situation still k8s send traffic
+
+Kubernetes has concept of probes
+1. Readiness
+2. Startup
+3. Liveness
+4. GRPC
+
+Readiness : Readiness means Pod is ready to handle traffic or not. check if the pod is ready to accept traffic. check dependencies for the pod in terms of availability of service or latency issue check
+
+Startup Probe: our application takes time to startup there we can use Startup Probe. like our application will take time so before running up other probes we can define in Startup probes that let it take time after then start other probes. First this executes, Until its a success other probes are not executed.
+
+Liveness Probe : our application is running and traffic is comming but question is that our application is alive i.e. its endpoints are running or not. traffic is comming and customer is facing downtime. httpGet - if the response is ok or not 200-99 tcpSocket - portcheck exec - custom command(like file check) to check if pod is ready or not.
+
+kubelet restarts container when liveness fails.
+
+PROBES : we can define these by ourselves.
+Liveness: http-get http://:80/ delay=0s timeout=1s period=10s # success=1 #failure=3
+
+delay=0s : tells how much delay should be given before running probe
+timeout=1s : what would be timeout
+period=10s : tells how much period for kubelet
+success=1 : tells at how much we would conclude success
+failure=3 : tells at what and how much we would conclude failure.
+
+
+probe.yaml :
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+    ports:
+    - containerPort: 80
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+
+
+
+probe2.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 15
+          timeoutSeconds: 2
+          periodSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+          periodSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 10
+
+
+kubectl delete deploy --all
+
+kubectl delete pods --all
+
+kubectl delete rs --all
+
+kubectl apply -f probe.yaml
+
+# check Liveness section : you will see failure and success defined there
+kubectl describe pods
+
+analyze and get describtion about probes from probe2.yaml file in bullets with flow in simple and easy Explanation in short statements.
+
+# ask chatgpt how and describe this how it works what is the flow of probes checking ??
+pod is running but first check readinessProbe then success occurs then pod goes into running status and they are able to serve the traffic
+first check the readinessProbe then success then check livenessProbe i.e. checks pod is live or not when the threshold values hits or finishes then failure scenario is started with replica checked how that happens.
+
+
+HOW TO USE GATEWAY-API ? USECASES AND WHAT ARE THE WAYS GATEWAY-API WE CAN USE ??
+
+Canary Deployment - Usually its done with Gateway API, service mesh etc but with deployment you can simulate like below:
+
+blue-green traffic rollout
+
+canary (traffic splitting)
+How to use HTTPRoute for HTTP traffic splitting,HTTP request mirroring,HTTP routing, HTTP redirects and rewrites, HTTP header modifier,
+
+
+kubectl apply -f canary-svc.yaml
+
+kubectl apply -f deploy-canary.yaml
+
+kubectl apply -f deploy-canary-v2.yaml
+
+kubectl get pods
+
+kubectl get svc
+
+kubectl get ep
+
+kubectl get ep -owide
+
+kubectl get ep -oyaml
+
+# observe in nginx-service of canary-svc.yaml you will see in name section : 1 - nginx-canary and 9 - nginx-stable (this means 10% traffic will go to nginx-canary and remaining traffic will go to nginx-stable )
+kubectl get ep nginx-service -oyaml
+
+
+this is a native way of traffic-splitting without using service, mesh etc just by concept of using label-selector if we want to do it natively
+
+kubectl get pods -o=custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image --watch
+
+
+Check the endpoints for the service created and you will see all in the endpoints ready to be served traffic.
+
+
+
+
+
+
+CHECK THE ABOVE STATEMENTS AND EXAMPLES AND COMMANDS RUN AND CHECK FOR CORRECTION AND PREPARE A NOTE WITH IMPROVEMENTS IN SIMPLE LANGUAGE TO EASY TO REMEMBER WITH RIGHT SUGGESTIONS WITH EASY STATEMENTS TO REMEMBER
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
