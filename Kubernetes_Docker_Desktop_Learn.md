@@ -4415,3 +4415,1675 @@ ___
 ---
 
 **<mark>PART-6 : DEPLOYMENTS, REPLICASET, PROBES, DEPLOYMENT STRATEGIES</mark>**
+
+# 🧩 ReplicaSet, Deployment & Traffic Splitting — Simple Notes
+
+---
+
+## 🧱 1️⃣ ReplicaController → ReplicaSet → Deployment
+
+### 🔹 ReplicationController
+
+- **Old object**, now rarely used.
+
+- Could maintain fixed replicas of Pods.
+
+- ✅ Deprecated — replaced by **ReplicaSet**.
+
+### 🔹 ReplicaSet
+
+- Maintains **a stable set of identical Pods** (replicas).
+
+- Ensures desired number of Pods are **running at all times**.
+
+- Automatically **recreates Pods** if any crash or are deleted.
+
+- Still used internally by **Deployment**.
+
+> ⚙️ You can create a ReplicaSet directly, but it’s not recommended — use **Deployment** instead.
+
+### 🔹 Deployment
+
+- **Higher-level controller** that manages ReplicaSets.
+
+- Used for **rolling updates**, **rollbacks**, and **scaling** easily.
+
+- When you do `kubectl apply -f deploy.yaml`, Kubernetes actually creates a ReplicaSet inside.
+
+> 🧠 Remember:
+> 
+> - **Deployment** → manages ReplicaSets
+> 
+> - **ReplicaSet** → manages Pods
+
+## ⚙️ Example Behavior: ReplicaSet + Pod Labels
+
+### 🧾 nginx-rs.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-rs
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+```
+
+**🧾 pod-rs.yaml**
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+  labels:
+    app: nginx   # Same label as ReplicaSet selector!
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+```
+
+🔹 Case 1 — Run ReplicaSet first
+
+```powershell
+kubectl apply -f nginx-rs.yaml
+kubectl get pods -w
+```
+
+✅ 3 Pods created.
+
+Now apply the single Pod:
+
+```powershell
+kubectl apply -f pod-rs.yaml
+```
+
+Result:
+
+- ReplicaSet sees **4 Pods with same label (app=nginx)**.
+
+- Desired replicas = 3 → **terminates the extra Pod** (your nginx-pod).
+
+🔹 Case 2 — Run Pod first
+
+```powershell
+kubectl delete -f nginx-rs.yaml
+kubectl apply -f pod-rs.yaml
+kubectl apply -f nginx-rs.yaml
+```
+
+Result:
+
+- One existing Pod (`nginx-pod`) already running with label `app=nginx`.
+
+- ReplicaSet creates **2 more** to reach total 3 Pods.
+
+- So: 1 manual Pod + 2 ReplicaSet Pods = total 3.
+
+✅ ReplicaSet **manages by label**, not by Pod name.
+
+### 🔹 Debugging tip
+
+If you **change the label** of one of the running Pods (e.g., `app=debug`), ReplicaSet no longer tracks it and creates a **new Pod** to maintain desired count.
+
+**💡 Quick Summary Table**
+
+| Controller                | Manages     | Updates   | Usage                      |
+| ------------------------- | ----------- | --------- | -------------------------- |
+| **ReplicationController** | Pods        | Manual    | Deprecated                 |
+| **ReplicaSet**            | Pods        | Manual    | Still used (by Deployment) |
+| **Deployment**            | ReplicaSets | Automatic | Preferred for apps         |
+
+## 🌐 Ingress & Traffic Splitting
+
+### 🔹 What is Traffic Splitting?
+
+Traffic splitting = **divide network traffic** between multiple backends or app versions.  
+Used for:
+
+- **Canary releases** (10% → new version, 90% → old version)
+
+- **A/B testing**
+
+- **Gradual rollout**
+
+### 🔹 How it works
+
+- You define **HTTPRoute** or **Ingress** rules.
+
+- Each rule defines **weight** (percentage) for how requests are distributed among services.
+
+🧾 Example (Gateway API)
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: traffic-split
+spec:
+  parentRefs:
+  - name: my-gateway
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: app-v1
+      weight: 80
+    - name: app-v2
+      weight: 20
+```
+
+📘 Here:
+
+- 80% traffic → `app-v1` Service
+
+- 20% traffic → `app-v2` Service
+
+### 🔹 When to use
+
+- During **rolling updates** or **testing new releases**.
+
+- For **gradual rollout** or **blue-green deployments**.
+
+---
+
+## 🧠 Easy Memory Lines
+
+🧩 **ReplicaSet keeps Pods alive**  
+📦 **Deployment manages ReplicaSets**  
+⚙️ **Ingress / HTTPRoute manages traffic split**  
+🔁 **Traffic splitting = share requests by weight**
+
+---
+
+---
+
+🧩 **ReplicaSet Deletion Policies — Simple Notes**
+
+## 🧱 1️⃣ What Happens When You Delete a ReplicaSet?
+
+When you delete a **ReplicaSet**, Kubernetes uses something called a **propagationPolicy** to decide **what happens to its child Pods**.
+
+You can delete using:
+
+```yaml
+curl -X DELETE \
+'http://localhost:8080/apis/apps/v1/namespaces/default/replicasets/nginx-rs' \
+-d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Foreground"}' \
+-H "Content-Type: application/json"
+```
+
+or simply using:
+
+```yaml
+kubectl delete rs nginx-rs --cascade=foreground
+```
+
+🧠 **cascade flag = propagationPolicy**
+
+## ⚙️ 2️⃣ Steps Before Running Deletion (Setup)
+
+1. Create the ReplicaSet:
+   
+   ```powershell
+   kubectl apply -f nginx-rs.yaml
+   ```
+
+2. Start proxy to use API directly:
+   
+   ```powershell
+   kubectl proxy --port=8080
+   ```
+
+3. Watch what happens:
+   
+   ```powershell
+   kubectl get pods -w
+   kubectl get rs -w
+   ```
+
+**🚀 3️⃣ The Three Propagation Policies**
+
+### 🔹 **1. Foreground (Parent waits for children to be deleted)**
+
+**Definition:**  
+ReplicaSet deletion starts → all child Pods are deleted first → only after all Pods are gone → ReplicaSet object is deleted.
+
+**Example:**
+
+```powershell
+curl -X DELETE \
+'http://localhost:8080/apis/apps/v1/namespaces/default/replicasets/nginx-rs' \
+-d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Foreground"}' \
+-H "Content-Type: application/json"
+```
+
+HERE IN CURL COMMAND ::
+-X DELETE sending deleting request rest call
+apis : apps/v1
+namespace : default
+replicaset : nginx-rs
+-d tells data in we are sending ::
+        kind : DeleteOptions
+        apiVersion : v1
+        propagationPolicy : Foreground
+
+Process flow:
+
+```yaml
+ReplicaSet (deletion pending)
+   ↓
+Pods deleted first
+   ↓
+ReplicaSet deleted last
+```
+
+✅ **Use when:** you want a *clean deletion order* — children gone before parent.
+
+🧠 **Easy line:**
+
+> “Foreground = First kids, then parent.”
+
+### 🔹 **2. Background (Parent deleted immediately)**
+
+**Definition:**  
+ReplicaSet is deleted immediately, and **Kubernetes garbage collector** later deletes its child Pods in the background.
+
+**Example:**
+
+```powershell
+curl -X DELETE \
+'http://localhost:8080/apis/apps/v1/namespaces/default/replicasets/nginx-rs' \
+-d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Background"}' \
+-H "Content-Type: application/json"
+```
+
+Process flow:
+
+```yaml
+ReplicaSet deleted immediately
+   ↓
+Pods deleted later (in background)
+```
+
+✅ **Use when:** you want *faster deletion* and don’t care about waiting for pods.
+
+🧠 **Easy line:**
+
+> “Background = Parent goes first, kids cleaned up later.”
+
+### 🔹 **3. Orphan (Pods are not deleted)**
+
+**Definition:**  
+ReplicaSet is deleted immediately, but its Pods remain running.  
+They become **orphaned** — no owner controller.
+
+**Example:**
+
+```powershell
+curl -X DELETE \
+'http://localhost:8080/apis/apps/v1/namespaces/default/replicasets/nginx-rs' \
+-d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Orphan"}' \
+-H "Content-Type: application/json"
+```
+
+Process flow:
+
+```yaml
+ReplicaSet deleted
+   ↓
+Pods keep running independently
+```
+
+✅ **Use when:** you want to keep Pods alive (for debugging or testing).
+
+🧠 **Easy line:**
+
+> “Orphan = Parent gone, kids still running.”
+
+## 📘 4️⃣ Example YAML Files
+
+### `nginx-rs.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-rs
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+```
+
+pod-rs.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+  labels:
+    app: nginx   # Same label as ReplicaSet selector
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+```
+
+---
+
+## 🧠 5️⃣ Easy Summary Table
+
+| Propagation Policy | What Happens                       | Parent Deleted | Pods Deleted | Example Use     |
+| ------------------ | ---------------------------------- | -------------- | ------------ | --------------- |
+| **Foreground**     | Delete Pods first, then ReplicaSet | After Pods     | Yes          | Clean order     |
+| **Background**     | Delete ReplicaSet, Pods later      | Immediately    | Yes (later)  | Fast deletion   |
+| **Orphan**         | Delete ReplicaSet, keep Pods       | Immediately    | ❌ No         | Keep Pods alive |
+
+## 🪄 6️⃣ Easy Memory Tricks
+
+- 🧩 **Foreground → First kids then parent**
+
+- ⚙️ **Background → Parent first, kids later**
+
+- 👶 **Orphan → Parent gone, kids alone**
+
+- 🧹 **Garbage collector** = the one who cleans up background pods.
+
+kubectl proxy --port=8080
+
+🧠 Simple Explanation:
+It creates a secure tunnel between your local machine and the Kubernetes cluster’s API server — so you can interact with the cluster using REST API calls from your browser or tools like curl.
+
+🧪 Example Use Case:
+After running this command, you can open your browser and visit:
+
+http://localhost:8080/api/
+
+This will show the Kubernetes API endpoints — useful for debugging, automation, or exploring the cluster.
+
+🔐 Bonus:
+It uses your current kubectl authentication, so you don’t need to manually handle tokens or certificates.
+
+## 🚀 **ReplicaSet Scale Down Flow (1 ➡️ 5 easy points)**
+
+When Kubernetes **scales down** a ReplicaSet (removes Pods), it follows this order to decide **which Pods to delete first**:
+
+1️⃣ **Pending Pods first**  
+→ If any Pods are stuck in *Pending* state (not running yet), they’re deleted first.
+
+2️⃣ **Pods with deletion annotation (controller.kubernetes.io/pod-deletion-cost)**  
+→ Lower deletion-cost Pods are removed first.  
+*(Think: lower cost = cheaper to delete)*
+
+3️⃣ **Pods on nodes with more replicas**  
+→ Nodes that already have many Pods from this ReplicaSet lose Pods first (for balance).
+
+4️⃣ **Older Pods first**  
+→ Pods created earlier are deleted before newer ones.  
+*(Think: old leaves fall first 🌿)*
+
+5️⃣ **Otherwise: Random**  
+→ If all are equal, Kubernetes randomly deletes one.
+
+🧠 **Memory tip:**  
+👉 *Pending → Pod-cost → Node-load → Oldest → Random*  
+(or “P–C–N–O–R”)
+
+## ⚙️ **DEPLOYMENTS — Imperative vs Declarative**
+
+### **Imperative (One-line command)**
+
+You directly tell Kubernetes *what to do right now.*
+
+```bash
+kubectl create deploy mynginx --image=nginx --replicas=3 --port=80`
+```
+
+✅ **Creates** a Deployment named `mynginx`  
+✅ Uses `nginx` image  
+✅ Runs **3 replicas**  
+✅ Exposes **port 80**
+
+🧠 *Tip:* “Imperative = Immediate action.”
+
+### **Declarative (YAML file way)**
+
+You write what you **want** in a file → then **apply** it.
+
+`kubectl create deploy bootcamp --image=nginx --replicas=3 --port=80 --dry-run=client -o yaml > deploy.yaml`
+
+Then you can edit the file and apply it:
+
+`kubectl apply -f deploy.yaml`
+
+🧠 *Tip:* “Declarative = Documented configuration.”
+
+## 📈 **Scaling Commands**
+
+### **Scale Up** (Increase pods)
+
+`kubectl scale deploy bootcamp --replicas=5`
+
+➡️ Increases from 3 → 5 Pods.
+
+### **Scale Down** (Decrease pods)
+
+`kubectl scale deploy bootcamp --replicas=4`
+
+➡️ Reduces Pods from 5 → 4 (follows the scale-down flow).
+
+## ✅ **Quick Summary Note**
+
+| Concept                         | Command                                                              | Meaning                         |
+| ------------------------------- | -------------------------------------------------------------------- | ------------------------------- |
+| Create Deployment               | `kubectl create deploy mynginx --image=nginx --replicas=3 --port=80` | Imperative creation             |
+| Generate YAML (for declarative) | `--dry-run=client -o yaml`                                           | Creates YAML without running it |
+| Scale Up                        | `kubectl scale deploy bootcamp --replicas=5`                         | Adds Pods                       |
+| Scale Down                      | `kubectl scale deploy bootcamp --replicas=4`                         | Removes Pods                    |
+| Apply Config                    | `kubectl apply -f deploy.yaml`                                       | Applies YAML file               |
+
+## 💡 **Pro Tips to Remember**
+
+- 🧩 **Imperative → Do now**, **Declarative → Plan first**
+
+- 📦 Use `kubectl get deploy` to see replicas
+
+- 📊 Use `kubectl get rs` to see which ReplicaSet is controlling your Pods
+
+- 🧹 Scaling down never affects newer Pods unless needed
+
+## 🚀 **Deployment Strategy in Kubernetes (Simplified Note)**
+
+### ⚙️ Command Example:
+
+`kubectl create deploy mynginx --image=nginx --replicas=3 --port=80`
+
+When you create a Deployment like this 👆,  
+Kubernetes **automatically adds a default deployment strategy** — even if you don’t specify one.
+
+## 🧩 **Default Strategy: RollingUpdate**
+
+When you check the Deployment YAML (`kubectl get deploy mynginx -o yaml`),  
+you’ll see something like:
+
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+```
+
+✅ This means:
+
+- **type: RollingUpdate** → update Pods one by one (gradually)
+
+- **maxSurge: 25%** → allow up to 25% **extra Pods** (temporary surge) during update
+
+- **maxUnavailable: 25%** → allow up to 25% **Pods to be unavailable** during update
+
+🧠 *Tip:* RollingUpdate = smooth replacement → no downtime (or very minimal)
+
+## 🔄 **Why RollingUpdate is Default**
+
+Because it gives **zero downtime deployment** by:
+
+- Creating new Pods with the updated version
+
+- Slowly removing old Pods
+
+- Keeping enough Pods running so the app is always available
+
+🧠 *Easy phrase:*
+
+> “**RollingUpdate rolls new Pods in, old Pods out — with users never noticing!**”
+
+## 🔧 **If You Specify Another Strategy**
+
+If you explicitly mention strategy in YAML,  
+Kubernetes will use **your** settings instead of the default.
+
+Example:
+
+```yaml
+strategy:
+  type: Recreate
+```
+
+➡️ This will **delete all old Pods first**, then create new ones.  
+⚠️ Causes **downtime**, but ensures a clean restart (used for apps that can’t run multiple versions together).
+
+🧠 *Tip:*
+
+> “**Recreate = Remove all, then recreate.**”
+
+## ✅ **Quick Comparison Table**
+
+| Strategy Type               | Behavior                                | Downtime          | Use Case                      |
+| --------------------------- | --------------------------------------- | ----------------- | ----------------------------- |
+| **RollingUpdate (Default)** | Updates Pods one by one                 | ❌ No (or minimal) | Most web apps                 |
+| **Recreate**                | Deletes old Pods, then creates new ones | ✅ Yes             | DB changes, version conflicts |
+
+## 💡 **Pro Tips to Remember**
+
+- 🧩 Default strategy = **RollingUpdate**
+
+- 🕒 Use **RollingUpdate** → for continuous availability
+
+- 🧹 Use **Recreate** → only when needed (e.g., incompatible app versions)
+
+- 🧠 Shortcut memory:
+  
+  > **R-U → RollingUpdate = Reliable & Up**  
+  > **Recreate → Restart Everything**
+
+🧩 **RollingUpdate vs Recreate — YAML Comparison**
+
+RollingUpdate Strategy Example :
+
+```yaml
+# ==========================================================
+# 🌀 STRATEGY 1: RollingUpdate (DEFAULT)
+# ----------------------------------------------------------
+# ✅ ZERO Downtime
+# ✅ Gradually replaces old Pods with new ones
+# ✅ Best for web apps or services that must stay available
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-rolling
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    type: RollingUpdate               # Default strategy
+    rollingUpdate:
+      maxSurge: 25%                   # Allow 25% extra Pods during update
+      maxUnavailable: 25%             # Allow 25% Pods to be temporarily unavailable
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+```
+
+Recreate Strategy Example :
+
+```yaml
+# ==========================================================
+# 🔁 STRATEGY 2: Recreate
+# ----------------------------------------------------------
+# ⚠️ Downtime occurs
+# 🚫 Deletes all old Pods before creating new ones
+# ✅ Best for apps that cannot run two versions together
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-recreate
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    type: Recreate                    # Deletes old Pods first, then creates new ones
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+```
+
+## 🧠 **Memory Shortcut**
+
+| Strategy          | Meaning                  | Downtime | Tip                      |
+| ----------------- | ------------------------ | -------- | ------------------------ |
+| **RollingUpdate** | Gradual pod replacement  | ❌ No     | “Roll = smooth change”   |
+| **Recreate**      | Delete → then create new | ✅ Yes    | “Recreate = Restart All” |
+
+
+
+**🧾 Kubernetes Deployment — Rollout, Record, and Revision Notes**
+
+⚙️ **Command Example**
+
+`kubectl create deploy bootcamp --image nginx --replicas 3 --port 80`
+
+`kubectl set image deploy bootcamp nginx=nginx:1.14.a --record`
+
+### 💡 What does `--record` do?
+
+- The `--record` flag **adds the command you ran** (like the image update) into the Deployment’s **annotation** under  
+  `kubernetes.io/change-cause`.
+
+- It helps you **track what change was made and why**, in rollout history.
+
+- If you **don’t use `--record`**, the “CHANGE-CAUSE” will show `<none>` in rollout history.
+
+🧠 *Simple line to remember:*
+
+> “`--record` = Remember what you did.”
+
+✅ **Example output:**
+
+```yaml
+kubectl rollout history deploy/bootcamp
+REVISION  CHANGE-CAUSE
+1         <none>
+2         kubectl set image deploy bootcamp nginx=nginx:1.14.a --record=true
+3         kubectl set image deploy bootcamp nginx=nginx:1.14.b --record=true
+```
+
+⚠️ Note:  
+`--record` is now **deprecated** in newer Kubernetes versions.  
+👉 Instead, we manually add a `CHANGE-CAUSE` using an **annotation**.
+
+
+
+## 🏷️ **Manual Way (Recommended Now)**
+
+You can manually patch your Deployment to add or update the annotation:
+
+```yaml
+kubectl annotate deploy bootcamp kubernetes.io/change-cause="Updated nginx image to 1.14.b"
+```
+
+Now when you check:
+
+`kubectl rollout history deploy/bootcamp`
+
+you’ll see your custom message under `CHANGE-CAUSE`.
+
+🧠 *Tip:*
+
+> “Annotation = Manual Record”
+
+
+
+🔁 **Deployment Rollout & Revision Concepts**
+
+### 🔹 **Each update = New Revision**
+
+Whenever you:
+
+- Change the image
+
+- Change the strategy
+
+- Change the configuration in spec
+
+Kubernetes creates a **new ReplicaSet** (and new revision).
+
+✅ **Example:**
+
+```yaml
+Revision 1 → nginx:latest
+Revision 2 → nginx:1.14.a
+Revision 3 → nginx:1.14.b
+```
+
+You can check details:
+
+`kubectl rollout history deploy/bootcamp --revision=2`
+
+`kubectl rollout status deployment/bootcamp`
+
+## 🧨 **Rollback**
+
+If something goes wrong, you can roll back:
+
+`kubectl rollout undo deployment/bootcamp --to-revision=1`
+
+This brings Deployment back to the image/config of Revision 1.
+
+🧠 *Tip:*
+
+> “Undo → Go back to old version safely.”
+
+
+
+🧩 **Relationship Between Deployment, ReplicaSet, and Pods**
+
+`Deployment → creates ReplicaSet → creates Pods`
+
+- **Deployment** = higher-level controller (manages rollout, rollback, scaling, strategy)
+
+- **ReplicaSet** = ensures correct number of Pods are running
+
+- **Pods** = actual running containers
+
+🧠 *Tip:*
+
+> “Deployment is the boss, ReplicaSet is the manager, Pods are the workers.”
+
+
+
+
+
+## ⚙️ **Scaling and Control**
+
+### **Scale Up / Down**
+
+`kubectl scale deploy/bootcamp --replicas=6`
+
+➡️ Deployment automatically updates ReplicaSet and Pod count.
+
+Pause / Resume Rollout
+
+```yaml
+kubectl rollout pause deploy/bootcamp
+kubectl rollout resume deploy/bootcamp
+```
+
+✅ Use **pause** before applying multiple changes (avoid triggering multiple rollouts).  
+✅ Use **resume** to continue rollout once all changes are ready.
+
+🧠 *Tip:*
+
+> “Pause = Stop updates temporarily, Resume = Continue rollout.”
+
+
+
+## 🧠 **Quick Summary Table**
+
+| Concept           | Command                                                             | Meaning                         |
+| ----------------- | ------------------------------------------------------------------- | ------------------------------- |
+| Create Deployment | `kubectl create deploy bootcamp --image=nginx`                      | Creates Deployment & ReplicaSet |
+| Set Image         | `kubectl set image deploy bootcamp nginx=nginx:1.14.a --record`     | Updates image & records change  |
+| Check History     | `kubectl rollout history deploy/bootcamp`                           | View rollout revisions          |
+| Annotate Change   | `kubectl annotate deploy bootcamp kubernetes.io/change-cause="..."` | Manually record change          |
+| Rollback          | `kubectl rollout undo deploy/bootcamp --to-revision=2`              | Revert to old revision          |
+| Scale             | `kubectl scale deploy/bootcamp --replicas=6`                        | Change number of Pods           |
+| Pause / Resume    | `kubectl rollout pause/resume deploy/bootcamp`                      | Temporarily stop/resume rollout |
+
+
+
+## 🧠 **Simple Memory Tips**
+
+- 🔸 `--record` → “Remember the change.”
+
+- 🔸 Annotation → “Manual reason for change.”
+
+- 🔸 Deployment → “Boss of ReplicaSet.”
+
+- 🔸 RollingUpdate → “No downtime.”
+
+- 🔸 Recreate → “Downtime but clean start.”
+
+- 🔸 Rollout Undo → “Time travel to old version.”
+
+
+
+FOR RECREATE ::
+
+```powershell
+controlplane:~/Kubernetes-hindi-bootcamp/part6$ cat recreate.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-deployment
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+    spec:
+      containers:
+      - name: demo
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+
+kubectl apply -f recreate.yaml
+
+controlplane:~$ kubectl set image deployments/demo-deployment demo=nginx:14.0
+deployment.apps/demo-deployment image updated
+```
+
+generally we don't do recreate because there is lot of downtime means the application we are running all the pods will terminate and die and then recreate and for new pods may be it will take time for creation.
+
+so there is difference between rollingUpdate and recreate-strategy in recreate there is a downtime.
+
+
+
+🧾 Kubernetes PROBES — Simple & Complete Notes
+
+## 🎯 **Why We Need Probes**
+
+When we create a Pod and expose it through a Service,  
+Kubernetes starts sending traffic **immediately** — even if:
+
+- the app is **not ready yet**,
+
+- a **file/dependency** is missing,
+
+- or the app has gone into a **deadlock** (e.g., two Pods writing to the same file).
+
+✅ To prevent sending traffic to such **unhealthy** or **unready** Pods,  
+Kubernetes gives us **Probes**.
+
+## 🔍 **Types of Probes**
+
+1. **Readiness Probe**
+
+2. **Liveness Probe**
+
+3. **Startup Probe**
+
+4. **(Optional)** gRPC Probe *(for gRPC-based services)*
+
+
+
+### 🧩 **1. Readiness Probe**
+
+📌 Checks: **Is the Pod ready to handle traffic?**
+
+- Kubernetes uses this to decide whether a Pod should receive requests.
+
+- If **Readiness fails**, the Pod is **removed** from the Service endpoints — so no traffic goes to it.
+
+- Used to check dependencies like DB, config file, or service latency.
+
+🧠 *Think:*
+
+> “Readiness = Ready for traffic or not?”
+
+
+
+### 🧩 **2. Liveness Probe**
+
+📌 Checks: **Is the application still alive and running properly?**
+
+- Even if the app is running, it might be stuck (e.g., deadlock or hung thread).
+
+- Liveness Probe checks if the container is **responsive**.
+
+- If it fails, **kubelet restarts the container automatically**.
+
+🧠 *Think:*
+
+> “Liveness = Alive or dead?”
+
+**Common types:**
+
+- **httpGet** → Checks URL returns success (HTTP 200–399)
+
+- **tcpSocket** → Checks if port is open
+
+- **exec** → Runs custom command inside container
+
+Example:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 15
+  timeoutSeconds: 2
+  periodSeconds: 5
+  failureThreshold: 3
+```
+
+
+
+### 🧩 **3. Startup Probe**
+
+📌 Checks: **Has the application finished starting up yet?**
+
+- Used when your app takes time to boot up (e.g., Java Spring Boot).
+
+- It runs **before** Liveness and Readiness.
+
+- Until Startup Probe succeeds, Kubernetes **does not run** the other probes.
+
+🧠 *Think:*
+
+> “Startup = Let me wake up first, then check me.”
+
+
+
+### 🧩 **4. GRPC Probe** *(Advanced, optional)*
+
+- Used for apps exposing **gRPC endpoints** instead of HTTP.
+
+- Checks health through gRPC service calls.
+
+
+
+## 🔄 **Probe Parameter Meanings (Easy Definitions)**
+
+| Parameter               | Meaning                                |
+| ----------------------- | -------------------------------------- |
+| **initialDelaySeconds** | Wait before running first check        |
+| **timeoutSeconds**      | Time to wait for probe response        |
+| **periodSeconds**       | How often to run probe                 |
+| **successThreshold**    | How many successes to mark as healthy  |
+| **failureThreshold**    | How many failures to mark as unhealthy |
+
+🧠 *Tip:*
+
+> “Delay → Timeout → Period → Success → Failure” (D-T-P-S-F = probe sequence memory)
+
+
+
+⚙️ **Probe Example Summary (from probe2.yaml)**
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 15
+  timeoutSeconds: 2
+  periodSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 5
+  timeoutSeconds: 2
+  periodSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 10
+
+```
+
+## 🧠 **How Probes Work — Flow Explanation (Step-by-Step)**
+
+### 🧩 **1. Pod Creation Phase**
+
+- Pod is scheduled → container starts.
+
+- If **Startup Probe** is defined, Kubernetes waits for it first.
+
+---
+
+### 🧩 **2. Startup Probe (Initialization Phase)**
+
+- Checks until app starts successfully.
+
+- Other probes (Readiness, Liveness) are **paused** until Startup succeeds.
+
+- If Startup fails (exceeds failureThreshold) → container **restarts**.
+
+🧠 *Think:*
+
+> Startup = “Wait until I’m ready to be checked.”
+
+---
+
+### 🧩 **3. Readiness Probe (Traffic Control Phase)**
+
+- After Startup passes, Readiness begins.
+
+- Checks if app is ready to **accept traffic**.
+
+- If success → Pod marked **Ready** → added to Service endpoint → starts receiving traffic.
+
+- If fails → Pod marked **NotReady** → removed from Service temporarily.
+
+🧠 *Think:*
+
+> Readiness = “Am I ready for users?”
+
+---
+
+### 🧩 **4. Liveness Probe (Health Monitoring Phase)**
+
+- Runs continuously to check if app is **healthy and responding**.
+
+- If it fails beyond failureThreshold → kubelet **restarts container**.
+
+- Helps recover from crashes, deadlocks, or hung processes.
+
+🧠 *Think:*
+
+> Liveness = “Still alive?”
+
+---
+
+### 🧩 **5. Continuous Monitoring**
+
+- Kubernetes keeps cycling through these checks:
+  
+  - **Startup** → once at boot
+  
+  - **Readiness** → before sending traffic
+  
+  - **Liveness** → while serving traffic
+
+✅ If any fails, appropriate action taken (pause traffic or restart container).
+
+---
+
+## ⚠️ **Failure Scenario**
+
+Example:  
+If `livenessProbe` fails 3 times in a row:
+
+1. kubelet marks container as **Unhealthy**
+
+2. kubelet **restarts** the container
+
+3. New container runs probes again from start
+
+🧠 *Tip:*
+
+> “Fail 3 → Restart Me”
+
+EXAMPLE : probe2.yaml
+
+```yaml
+probe2.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 15
+          timeoutSeconds: 2
+          periodSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+          periodSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 10
+```
+
+
+
+## 🧩 **Quick Practical Commands**
+
+| Purpose                | Command                                      |
+| ---------------------- | -------------------------------------------- |
+| Apply probe file       | `kubectl apply -f probe2.yaml`               |
+| Check pod details      | `kubectl describe pod <pod-name>`            |
+| See probe results      | Look under “Liveness” & “Readiness” sections |
+| Delete all deployments | `kubectl delete deploy --all`                |
+| Delete all pods        | `kubectl delete pods --all`                  |
+| Delete all ReplicaSets | `kubectl delete rs --all`                    |
+
+
+
+## 🧠 **Easy Summary to Remember**
+
+| Probe         | Checks                  | Action on Fail                   | When It Runs          |
+| ------------- | ----------------------- | -------------------------------- | --------------------- |
+| **Startup**   | Is app started yet?     | Waits / Restart if exceeds limit | Before others         |
+| **Readiness** | Can app accept traffic? | Remove from Service              | After startup success |
+| **Liveness**  | Is app alive & healthy? | Restart container                | During runtime        |
+
+🧩 *Flow Memory Line:*
+
+> “Startup → Readiness → Liveness”  
+> (Wake up → Accept → Stay alive)
+
+
+
+## 💡 **Pro Tips**
+
+- Always use **Startup Probe** for apps with slow boot time (e.g., Spring Boot, Java, .NET).
+
+- Combine **Liveness + Readiness** for full lifecycle protection.
+
+- Use `kubectl describe pod` often to observe **probe failures and restarts** in real time.
+
+- **Too aggressive probe settings** (short delays or timeouts) can cause **unnecessary restarts** — tune them properly.
+
+
+
+___
+
+🐳 **Kubernetes Canary Deployment & Gateway API — Simplified Notes**
+
+## 🔹 WHY CANARY DEPLOYMENT?
+
+Canary deployment is used when you want to **gradually roll out a new version** of your app  
+to a small set of users before sending it to everyone.
+
+💡 **Idea:** Test new version safely with real traffic → verify → then roll out to all.
+
+## ⚙️ **Example Setup (Without Service Mesh or Gateway API)**
+
+### **Service (canary-svc.yaml)**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx           # Common label for both versions
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+```
+
+**Stable Deployment (deploy-canary.yaml)**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-stable
+spec:
+  replicas: 9
+  selector:
+    matchLabels:
+      app: nginx
+      version: "1.17"
+  template:
+    metadata:
+      labels:
+        app: nginx
+        version: "1.17"
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17
+        ports:
+        - containerPort: 80
+```
+
+**Canary Deployment (deploy-canary-v2.yaml)**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-canary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+      version: "1.18"
+  template:
+    metadata:
+      labels:
+        app: nginx
+        version: "1.18"
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.18
+        ports:
+        - containerPort: 80
+```
+
+🧩 **Command Flow**
+
+```powershell
+kubectl apply -f canary-svc.yaml
+kubectl apply -f deploy-canary.yaml
+kubectl apply -f deploy-canary-v2.yaml
+```
+
+✅ Verify:
+
+```powershell
+kubectl get pods
+kubectl get svc
+kubectl get ep -oyaml
+```
+
+🧠 **Observation:**  
+In the Service’s Endpoints list (`kubectl get ep nginx-service -oyaml`):
+
+- You’ll see **1 pod from nginx-canary**
+
+- And **9 pods from nginx-stable**
+
+➡️ So traffic gets split **roughly 10% (canary)** and **90% (stable)**,  
+because Kubernetes load balances equally **across all endpoints**.
+
+
+
+## 🧠 **Quick Summary — Native Canary Logic (Without Gateway API)**
+
+| Step | Description                                          |
+| ---- | ---------------------------------------------------- |
+| 1️⃣  | Both deployments share same label `app: nginx`       |
+| 2️⃣  | Service selector `app: nginx` matches both versions  |
+| 3️⃣  | K8s Service sends requests equally to all Pods       |
+| 4️⃣  | Based on replica ratio → 1:9 = 10% traffic to canary |
+| 5️⃣  | If canary works fine, gradually scale it up          |
+| 6️⃣  | Once stable, remove old deployment                   |
+
+🪄 **Tip:** This is the “native” way to simulate canary rollout without Istio, Linkerd, or Gateway API.
+
+
+
+---
+
+
+
+---
+
+## 🌉 **GATEWAY API — MODERN & ADVANCED TRAFFIC CONTROL**
+
+### 🔹 What is Gateway API?
+
+Gateway API is the **next-generation Kubernetes networking API**,  
+replacing old **Ingress** for **more control, flexibility, and standardization**.
+
+
+
+### 💡 **USE CASES of Gateway API**
+
+| Use Case                                  | Description                                                                        |
+| ----------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Canary Deployment (Traffic Splitting)** | Split HTTP traffic between stable & canary versions (e.g., 90% stable, 10% canary) |
+| **Blue-Green Rollouts**                   | Route traffic to “green” version only when ready                                   |
+| **HTTP Routing**                          | Match routes based on path, host, headers                                          |
+| **HTTP Redirects & Rewrites**             | Redirect users (e.g., `/old → /new`)                                               |
+| **Header Modifiers**                      | Add, remove, or update HTTP headers                                                |
+| **Request Mirroring**                     | Send a copy of live traffic to another backend (for testing)                       |
+| **Traffic Weighting**                     | Weighted routing based on percentages or conditions                                |
+
+
+
+⚙️ **Basic HTTPRoute Example (Traffic Splitting)**
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: nginx-route
+spec:
+  parentRefs:
+  - name: my-gateway          # Your Gateway object
+  rules:
+  - backendRefs:
+    - name: nginx-stable
+      port: 80
+      weight: 90
+    - name: nginx-canary
+      port: 80
+      weight: 10
+```
+
+📊 **Result:**  
+→ 90% traffic → `nginx-stable`  
+→ 10% traffic → `nginx-canary`
+
+
+
+## 🧠 **Quick Memory Chart**
+
+| Feature   | Native Service Split       | Gateway API Split                             |
+| --------- | -------------------------- | --------------------------------------------- |
+| Setup     | Easy (via replicas)        | More control & flexibility                    |
+| Precision | Rough (based on Pod count) | Exact (percentage weights)                    |
+| Features  | Basic load balancing       | Traffic split, mirror, redirect, header rules |
+| Ideal for | Simple clusters            | Production-grade traffic control              |
+
+
+
+🌉 **Gateway API — Simplified & Practical Explanation**
+
+## 🧩 **1️⃣ What Is Gateway API?**
+
+Gateway API is the **next generation** of Kubernetes networking —  
+it’s the **evolution of Ingress**, giving **more power, flexibility, and clarity** for handling traffic.
+
+Think of it as:
+
+> “Ingress 2.0 — cleaner, modular, and smarter way to manage network traffic in Kubernetes.”
+
+
+
+## 🚦 **2️⃣ Why Gateway API (vs Ingress)?**
+
+| Ingress                          | Gateway API                                            |
+| -------------------------------- | ------------------------------------------------------ |
+| One big YAML with complex rules  | Split into smaller, reusable parts                     |
+| Hard to manage multiple teams    | Supports **multi-team ownership**                      |
+| Limited control (host/path only) | Advanced control (weight, mirror, headers, redirects)  |
+| Controller specific              | Standardized API for all (NGINX, Istio, Traefik, etc.) |
+
+💡 **Memory Tip:**  
+➡️ *Ingress = simple roads*  
+➡️ *Gateway API = smart traffic system with lanes, lights, and rules*
+
+
+
+*rules*
+
+---
+
+## 🧱 **3️⃣ Key Building Blocks**
+
+| Object                               | Role                                           | Analogy                          |
+| ------------------------------------ | ---------------------------------------------- | -------------------------------- |
+| **GatewayClass**                     | Defines type of Gateway (controller used)      | “Car Brand” (NGINX, Istio, etc.) |
+| **Gateway**                          | The entry point (like LoadBalancer or Ingress) | “Main Gate” to your cluster      |
+| **HTTPRoute / TCPRoute / GRPCRoute** | Defines routing rules                          | “Traffic Rules” (who goes where) |
+| **BackendRefs**                      | Points to Services                             | “Destination Parking Slots”      |
+
+
+
+## 🧭 **4️⃣ How It Works (Simple Flow)**
+
+`Client → Gateway (entry) → HTTPRoute (rules) → Service (Pods)`
+
+💡 So Gateway decides **which HTTPRoute to follow**,  
+and HTTPRoute decides **which Service to send traffic to.**
+
+
+
+## 🚀 **5️⃣ Simple Example — Canary Traffic Split**
+
+You have two versions of Nginx:
+
+- Stable → 90%
+
+- Canary → 10%
+
+### 🧩 **Gateway**
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: my-gateway
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+
+```
+
+🧩 **HTTPRoute**
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: nginx-route
+spec:
+  parentRefs:
+  - name: my-gateway
+  rules:
+  - backendRefs:
+    - name: nginx-stable
+      port: 80
+      weight: 90
+    - name: nginx-canary
+      port: 80
+      weight: 10
+
+```
+
+🧠 **How it Works:**
+
+- Gateway listens on port 80 (entry point).
+
+- HTTPRoute attaches to Gateway using `parentRefs`.
+
+- Traffic is split: **90% to stable**, **10% to canary** — exactly (not just by pod ratio).
+
+
+
+## 🧠 **6️⃣ Quick Use Cases to Remember**
+
+| Use Case                | Description                                      | Example                       |
+| ----------------------- | ------------------------------------------------ | ----------------------------- |
+| **Traffic Splitting**   | Split between stable & canary versions           | 90% stable, 10% canary        |
+| **Request Mirroring**   | Copy live traffic to another service for testing | Mirror `/api` to test backend |
+| **Routing Rules**       | Route based on hostname/path                     | `/v1 → old`, `/v2 → new`      |
+| **Redirects/Rewrites**  | Change URLs before forwarding                    | `/home → /index.html`         |
+| **Header Modification** | Add/remove headers for auth, tracing             | Add `x-user-id` header        |
+| **gRPC Routing**        | Handle gRPC traffic natively                     | gRPC load balancing support   |
+
+
+
+## 💡 **7️⃣ Easy Memory Map**
+
+| Concept         | Meaning                              | Keyword                |
+| --------------- | ------------------------------------ | ---------------------- |
+| **Gateway**     | Entry point                          | “Main gate”            |
+| **HTTPRoute**   | Rules                                | “Traffic signs”        |
+| **BackendRefs** | Destination                          | “Target services”      |
+| **Weight**      | Traffic ratio                        | “90–10 Split”          |
+| **ParentRefs**  | Connection between Gateway and Route | “Attach rules to gate” |
+
+## 🪄 **8️⃣ Simple Analogy**
+
+Think of Kubernetes networking like a **city**:
+
+| Component    | Analogy                            |
+| ------------ | ---------------------------------- |
+| GatewayClass | Type of gate (manual, automatic)   |
+| Gateway      | Main entrance to the city          |
+| HTTPRoute    | Roads and direction boards         |
+| BackendRefs  | Buildings/shops where traffic goes |
+| Weight       | How many cars go to each road      |
+
+
+
+## 🧱 Example: Routing HTTP Traffic to a Backend Service
+
+### 🎯 Goal
+
+Route HTTP traffic from `http://example.com` to a backend service called `my-service` running on port 8080.
+
+## 🔄 Flow Overview
+
+1. **GatewayClass**: Choose NGINX as the controller.
+
+2. **Gateway**: Define the entry point (like a LoadBalancer).
+
+3. **HTTPRoute**: Set rules to match `example.com` and forward traffic.
+
+4. **BackendRefs**: Point to `my-service`.
+
+📁 YAML Manifests
+
+1️⃣ GatewayClass
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: nginx-gateway-class
+spec:
+  controllerName: nginx.org/gateway-controller
+
+```
+
+2️⃣ Gateway
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: my-gateway
+  namespace: default
+spec:
+  gatewayClassName: nginx-gateway-class
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+    hostname: "example.com"
+
+```
+
+3️⃣ HTTPRoute
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: my-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: my-gateway
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: my-service
+      port: 8080
+
+```
+
+4️⃣ Backend Service
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+  namespace: default
+spec:
+  selector:
+    app: my-app
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+
+```
+
+## 🧪 Commands to Run
+
+### ✅ Step-by-step
+
+```powershell
+# 1. Install NGINX Gateway Controller (if not already)
+kubectl apply -f https://github.com/nginxinc/kubernetes-gateway/releases/latest/download/deploy.yaml
+
+# 2. Apply GatewayClass
+kubectl apply -f gatewayclass.yaml
+
+# 3. Apply Gateway
+kubectl apply -f gateway.yaml
+
+# 4. Apply HTTPRoute
+kubectl apply -f httproute.yaml
+
+# 5. Apply Backend Service
+kubectl apply -f service.yaml
+
+# 6. Verify resources
+kubectl get gatewayclass
+kubectl get gateway
+kubectl get httproute
+kubectl get svc
+
+```
+
+## 🧠 What Happens
+
+- Traffic to `example.com` hits the **Gateway**.
+
+- The **HTTPRoute** matches the path `/`.
+
+- Traffic is forwarded to `my-service:8080`.

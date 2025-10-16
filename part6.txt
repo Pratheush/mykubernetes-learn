@@ -2,13 +2,13 @@
 DEPLOYMENTS, REPLICASET, PROBES, DEPLOYMENT STRATEGIES
 
 
-Replication-Controller nobody uses it ReplicaSets is preffered.
+Replication-Controller nobody uses it. ReplicaSets is preffered.
 ReplicaSets is not used DEPLOYMENT is used instead.
 
 ReplicaSets maintains and runs Replicas and make sure that replicas runs properly.
 
 Using Ingress Controller we can define how traffic splitting should happen, how distribution mechanism should work
-there is now gateway api natively in kubernetes. Ingress Controller usis this implementing this.
+there is now gateway api natively in kubernetes. Ingress Controller uses this implementing this.
 
 what is traffic splitting? how it works and where and when it is used. use-cases ? (HTTPRoute is kind in yaml file)
 
@@ -262,7 +262,7 @@ RollingUpdate strategy we use it when we want zero downtime.
 
 
 # what does this --record do ? explain its usecase in simple few liner statements ?
-UPDATE AN IMAGE :
+# UPDATE AN IMAGE :
 kubectl set image deploy bootcamp nginx=nginx:1.14.a --record
 
 
