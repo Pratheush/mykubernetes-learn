@@ -1,0 +1,1315 @@
+STATEFULSETS, SERVICE, INGRESS
+
+
+🧠 What Does “Flat Network” Mean in Kubernetes?
+A flat network in Kubernetes means:
+
+1. All Pods across all Nodes can communicate directly with each other.
+2. There’s no NAT (Network Address Translation) between Pods.
+3. Every Pod gets a unique IP address that’s routable within the cluster.
+
+✅ So yes — Kubernetes assumes a flat, routable network for Pod-to-Pod communication.
+
+BUT THIS IS NOT SO SECURE.
+
+🔧 How Flat Networking Is Achieved
+This is usually handled by a CNI plugin (Container Network Interface), like:
+
+1. Calico
+2. Cilium
+3. Flannel
+4. Weave
+
+These plugins ensure:
+* Pod IPs are reachable across nodes.
+* Network policies can be enforced.
+
+
+POD's IP ARE EPHEMERAL i.e. as soon as pod dies then new pod is recreated again and its ip changes and network namespace changes so that means we cannot use pod ip's to communicate.
+
+SERVICE are Kubernetes objects . services has static ip and ip-tables maintains it and service has endpoints and user or any other pod or service or application try to communicate then service use this endpoint and through ip-table service routs traffic to pods so even if pods dies and recreates there is no problem.
+
+
+Types of Services:
+1. ClusterIP
+2. NodePort
+3. LoadBalancer
+4. ExternalName
+5. Headless
+6. ExternalDNS (this is not service type but it works like that)
+
+
+
+BASIC NETWORKING IN KUBERNETES :
+every pod can communicate with other pod
+
+
+
+
+
+
+Pause Container holds network namespace.
+
+
+in node there is Veth pair in root namespace.
+
+
+
+controlplane:~$ cat << EOF | kubectl apply -f -
+> apiVersion: v1
+kind: Pod
+metadata:
+  name: shared-namespace
+spec:
+  containers:
+    - name: p1
+      image: busybox
+      command: ['/bin/sh', '-c', 'sleep 10000']
+    - name: p2
+      image: nginx
+> EOF
+pod/shared-namespace created
+controlplane:~$
+
+controlplane:~$ kubectl get pods -owide
+NAME               READY   STATUS    RESTARTS   AGE   IP            NODE     NOMINATED NODE   READINESS GATES
+shared-namespace   2/2     Running   0          41s   192.168.1.4   node01   <none>           <none>
+
+# GETTING INTO NODE01
+controlplane:~$ ssh node01
+Last login: Mon Feb 10 22:06:42 2025 from 10.244.0.131
+
+# GETTING THE NETWORK NAMESPACE CREATED ON NODE01
+node01:~$ ip netns list
+cni-9e5781b9-8548-fb12-f265-5c198bdb1888 (id: 1)
+cni-68761b83-4ec5-aa10-1928-1cd3777b24c4 (id: 0)
+cni-dac19c53-ffd4-794f-4cc5-27619180ddda (id: 2)
+
+
+node01:~$ kubectl get pods
+E1020 08:46:02.840686    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+E1020 08:46:02.840953    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+E1020 08:46:02.842340    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+E1020 08:46:02.842671    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+E1020 08:46:02.844041    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+# LIST NAMESPACE OF NGINX CONTAINER WE CREATED IN THE MULTI-CONTAINER POD
+node01:~$ lsns | grep nginx
+4026532606 mnt         2  6804 root             nginx: master process nginx -g daemon off;
+4026532607 pid         2  6804 root             nginx: master process nginx -g daemon off;
+4026532608 cgroup      2  6804 root             nginx: master process nginx -g daemon off;
+node01:~$
+
+
+node01:~$ lsns | grep busybox
+
+node01:~$ lsns | grep nginx
+4026532606 mnt         2  6804 root             nginx: master process nginx -g daemon off;
+4026532607 pid         2  6804 root             nginx: master process nginx -g daemon off;
+4026532608 cgroup      2  6804 root             nginx: master process nginx -g daemon off;
+
+# HOW TO CHECK PAUSE CONTAINER,HERE 6804 IS PROCESS ID FROM ABOVE COMMAND lsns | grep nginx i.e. LISTING NETWORK NAMESPACE OF NGINX THUS GETTING PROCESS
+# THIS GIVES LIST OF NAMESPACE REPLATED TO NGINX PROCESS 6804
+node01:~$ lsns -p 6804
+        NS TYPE   NPROCS   PID USER  COMMAND
+4026531834 time      147     1 root  /sbin/init
+4026531837 user      147     1 root  /sbin/init
+4026532540 net         4  6678 65535 /pause
+4026532600 uts         4  6678 65535 /pause
+4026532601 ipc         4  6678 65535 /pause
+4026532606 mnt         2  6804 root  nginx: master process nginx -g daemon off;
+4026532607 pid         2  6804 root  nginx: master process nginx -g daemon off;
+4026532608 cgroup      2  6804 root  nginx: master process nginx -g daemon off;
+
+# check the network namespace (this gives list of all network namespaces)
+node01:~$ ls -lt /var/run/netns
+total 0
+-r--r--r-- 1 root root 0 Oct 20 08:42 cni-dac19c53-ffd4-794f-4cc5-27619180ddda
+-r--r--r-- 1 root root 0 Oct 20 08:25 cni-68761b83-4ec5-aa10-1928-1cd3777b24c4
+-r--r--r-- 1 root root 0 Oct 20 08:25 cni-9e5781b9-8548-fb12-f265-5c198bdb1888
+
+
+# exec into the namespace or into the pod to see the IP links
+# HERE THIS IS EXEC INTO THE NAMESPACE TO SEE THE IP LINKS
+# THIS IS ON NODE
+node01:~$ ip netns exec cni-dac19c53-ffd4-794f-4cc5-27619180ddda ip link
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+3: eth0@if9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default
+    link/ether b2:3c:c6:4a:ce:9f brd ff:ff:ff:ff:ff:ff link-netnsid 0
+node01:~$
+
+
+# EXEC INTO THE POD TO SEE THE IP LINKS
+# OBSERVE THAT eth0@if9 is same IP LINK
+controlplane:~$ kubectl exec -it shared-namespace -- ip addr
+Defaulted container "p1" out of: p1, p2
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+3: eth0@if9: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue
+    link/ether b2:3c:c6:4a:ce:9f brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.4/32 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::b03c:c6ff:fe4a:ce9f/64 scope link
+       valid_lft forever preferred_lft forever
+
+
+Now you will see eth@9 -> after @ there will be a number and you can then search its corresponding link on the node using ip link | grep -A1 ^9 you will be able to see the same network namespace after link These are the veth pairs or based on the CNI
+
+
+node01:~$ ip link | grep -A1 ^9
+9: caliede2c6f02d9@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netns cni-dac19c53-ffd4-794f-4cc5-27619180ddda
+node01:~$
+
+# @9 IS LINK TO NETWORK NAMESPACE i.e. "cni-dac19c53-ffd4-794f-4cc5-27619180ddda (id: 2)"
+# THIS IS ON HOST AND veth pair OF HOST i.e. CALICO PAIR "caliede2c6f02d9@if3" IS LINKED TO NETWORK NAMESPACE "link-netns cni-dac19c53-ffd4-794f-4cc5-27619180ddda"
+node01:~$ ip link | grep -A1 ^9
+9: caliede2c6f02d9@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netns cni-dac19c53-ffd4-794f-4cc5-27619180ddda
+node01:~$ ip netns list
+cni-9e5781b9-8548-fb12-f265-5c198bdb1888 (id: 1)
+cni-68761b83-4ec5-aa10-1928-1cd3777b24c4 (id: 0)
+cni-dac19c53-ffd4-794f-4cc5-27619180ddda (id: 2)
+node01:~$
+
+THERE ARE veth pairs created or depending on CNI maybe different.
+
+
+BOTH POD HAS THEIR OWN eth0 INTERFACE AND POD IP ADDRESS IS LINKED TO THE eth0
+
+NODE TO NODE COMMUNICATION HAPPENS THROUGH GATEWAY.
+
+
+
+controlplane:~$ kubectl delete svc --all
+service "kubernetes" deleted from default namespace
+controlplane:~$ kubectl delete pod --all
+pod "nginx" deleted from default namespace
+
+controlplane:~$ kubectl run nginx --image=nginx --labels=app=nginx
+controlplane:~$ kubectl run nginx --image=nginx -l app=nginx
+
+controlplane:~$ kubectl run nginx --image=nginx -l run=nginx
+pod/nginx created
+
+pod/nginx created
+controlplane:~$ kubectl expose pod nginx --port 80 --dry-run=client -oyaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    run: nginx  # selector : run : nginx tells select those pods which has label run=nginx
+status:
+  loadBalancer: {}
+controlplane:~$
+
+
+# THIS GIVES SERVICE YAML FILE
+kubectl expose pod nginx --port 80 --dry-run=client -oyaml
+
+
+controlplane:~$ kubectl get ep
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME         ENDPOINTS         AGE
+kubernetes   172.30.1.2:6443   6m22s
+
+
+controlplane:~$ kubectl expose pod nginx --port 80
+service/nginx exposed
+controlplane:~$
+
+# BY DEFAULT THE SERVICE CREATED IS ClusterIP. ClusterIP IS THAT KIND OF SERVICE WHICH IS USED FOR INTERNAL COMMUNICATION
+controlplane:~$ kubectl get svc
+NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP   16m
+nginx        ClusterIP   10.101.128.218   <none>        80/TCP    7m50s
+controlplane:~$
+
+
+controlplane:~$ kubectl run nginx --image=nginx -l run=nginx
+pod/nginx created
+controlplane:~$ kubectl expose pod nginx --port 80
+service/nginx exposed
+
+controlplane:~$ kubectl get ep
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME         ENDPOINTS         AGE
+kubernetes   172.30.1.2:6443   6d22h
+nginx        <none>            14s
+
+
+controlplane:~$ kubectl get svc
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP   6d22h
+nginx        ClusterIP   10.107.109.85   <none>        80/TCP    33s
+
+
+# curl 10.107.109.85 this request will go to service and then request will go to pod
+controlplane:~$ curl 10.107.109.85
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+controlplane:~$ kubectl get ep
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME         ENDPOINTS         AGE
+kubernetes   172.30.1.2:6443   6d22h
+nginx        192.168.1.4:80    2m23s
+
+
+# CHATGPT GIVE A 3-4 LINER SIMPLE EASY TO UNDERSTAND AND REMEMBER EXPLAINATION WITH SIMPLE EXAMPLE.
+WHAT IS ClusterIP SERVICE ?
+
+# CHATGPT GIVE A 3-4 LINER SIMPLE EASY TO UNDERSTAND AND REMEMBER EXPLAINATION WITH SIMPLE EXAMPLE.
+WHAT IS HEADLESS SERVICE ?
+
+
+THERE ARE TWO APPLICATION
+1. STATELESS (HERE DATA IS NOT PERSISTED)
+2. STATEFULL (DATABASE : HERE DATA IS PERSISTED)
+
+DEPLOYMENT : 3 REPLICAS : CREATED 3 REPLICAS IN RANDOM ORDERED
+
+STATEFULL APPLICATION CANNOT RUN BY DEPLOYMENT.
+WHY ?
+1. SUPPOSE THROUGH DEPLOYMENT WE CREATED 3 PODS OF DATABASE AND WE CREATED SERVICE OF TYPE ClusterIP AND IMAGINE OUR APPLICATION POD WANTS TO PERFORM CRUD OPERATION ON DATABASE AND WHEN APPLICATION SENDS SIGNAL TO SERVICE TO WRITE DATA THEN THIS SERVICE WILL SEND TRAFFIC TO ANY DATABASE POD AND WE DON'T KNOW ABOUT THE NAME OF DATABASE POD BECAUSE THEY ARE RANDOMLY GENERATED SO HERE THIS WILL CAUSE DATA INCONSISTENCY. SUPPOSE WE SCALED OR UPDATED AND ADD ONE MORE POD AND THAT POD ALSO GET ADDED BY RANDOMLY GENERATED .
+IF WE PERFORM DELETE OPERATION THEN IN RANDOM ORDER OPERATION WILL PERFORM
+
+SO WE CAN USE STATEFULSETS. STATEFULSETS ARE ALSO KUBERNETES OBJECTS
+
+STATEFULSETS : FOR STATEFULL APPLICATION WITH PERSISTENT STORAGE
+1. EVERY POD HAS A STICKY IDENTITY MEANING IT GETS A NAME
+2. ORDERED SCALING
+3. HEADLESS SERVICES
+
+STATEFULSETS > PREDICTABLE NAMING > POD CREATES ONE BY ONE
+WHAT IT MEANS IS FIRST ONE POD IS CREATED THEN PERSISTENT VOLUME AND PERSISTENT VOLUME CLAIM ATTACHES THEN GOES SUCCESSFULL RUNNING THEN NEXT POD IS CREATED. WHICHEVER POD IS CREATED ITS NAME IS KNOWN THAT WHICH POD IS GOING TO CREATED. AND WHEN PODS ARE DELETED THEN DELETED IN REVERSE ORDER
+
+STATEFULL APPLICATION IS NOT EASY TO RUN ON KUBERNETES BECAUSE WE HAVE TO TAKE CARE OF FEW THINGS WHICH IS CALLED REPLICATION OF DATA.
+LIKE IN STATEFULSETS WE CREATED MASTER-SLAVE TYPE ARCHITECTURE THEN THE REPLICATION BETWEEN THEM THAT WE NEED TO MANAGE AND IF NOT THEN THERE ARE OPERATORS
+
+CloudNativePG is the Kubernetes operator that covers the full lifecycle of a highly available PostgreSQL database cluster with a primary/standby architecture, using native streaming replication.
+
+EXPLAIN CHATGPT CloudNativePG WITH EXAMPLE HOW TO USE CloudNativePG AND WHERE AND HOW TO USE AND WHY TO USE OR NOT ?
+
+STATEFULL APPLICATIONS ARE DIFFICULT TO RUN BECAUSE DATA REPLICATION AND BACKUP AND DISASTER RECOVERY AND MONITORING MECHANISM ETC WE NEED TO SETUP BY OURSELVES WHICH IS NOT THAT EASY.
+
+BUT NOW THERE ARE LOTS OF ADVANCEMENTS IN OPERATOR THROUGH WHICH DATABASES CAN BE RUN ON KUBERNETES PERCONA IS ONE EXAMPLE KUBEDB IS ANOTHER EXAMPLE AND CloudNativePG IS ANOTHER EXAMPLE.
+
+IN STATEFULSETS THE SERVICE CREATED IS ClusterIP:NONE WHICH WE CALL HEADLESS SERVICE. SO WHEN WE SET ClusterIP:NONE THEN THAT WOULD TURN INTO HEADLESS SERVICE FOR WHICH NO IP IS CREATED AND WE USE THAT.
+
+
+
+controlplane: cd Headless
+controlplane: cat statefulset.yaml
+statefulset.yaml :
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: "postgres" # we have to define service name
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:13
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_PASSWORD
+          value: "example"
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:  # this is storage
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+
+IN KUBERNETES WE CAN DEFINE PERSISTENT-VOLUME AND PERSISTENT-VOLUME-CLAIM AND FOR THAT WE NEED STORAGE-CLASS
+BASICALLY WHEN POD GETS DELETED THEN IN SUCH SITUATION DATA STAY SAFE. THAT WE CALL PERSISTENT VOLUMES.
+
+# sc means storage-class
+kubectl get sc
+
+kubectl apply -f statefulset.yaml
+
+kubectl get pods
+
+kubectl get pv
+
+kubectl get pvc
+
+kubectl get sc
+
+cat svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  ports:
+  - port: 5432
+    name: postgres
+  clusterIP: None  # here in service when clusterIP:None is mentioned then it is headless service
+  selector:
+    app: postgres
+
+
+kubectl apply -f svc.yaml
+
+# observe that pods are getting created one by one after successfull running of one pod next pod gets created
+kubectl get pods
+
+# observe that pod that we scaled is generated in ordered number
+kubectl scale statefulset postgres --replicas=3
+
+# observe that pod that we scaled is generated in ordered number
+kubectl get pods
+
+if we delete pod then pods get deleted in reverse order i.e. if postgres-0 is created first then postgres-1 is created second and postgres-2 is created next then when we delete pod then postgres-2 gets deleted first then postgres-1 and then postgres-0 gets deleted.
+
+we have to do master-slave architecture by us and data-backup and data-replication etc so assume that everything is there then
+for example data is going to postgres-0 through crud operations then data clonning replication is between postgres-1 and postgres-2 because they are slaves and postgres-0 is master and when another slave is joining suppose postgres-3 then via data-replication mechanism data is replicated i.e. saved goes to postgres-3. thus this application becomes highly available.
+
+for statefulset when we create then we need data persistence so we need to define volumeClaimTemplates.
+without volumeClaimTemplates persistent-volume and persistent-volume-claim not created automatically just by statefulset creation
+
+
+# Checking statefulset pod
+kubectl exec -it postgres-0 -- psql -U postgres
+
+
+# OBSERVE  FOR SERVICE NAME postgres TYPE IS ClusterIP AND CLUSTER-IP IS NONE.
+kubectl get svc
+
+
+
+
+kubernetes service dns
+
+Namespaces of Services
+A DNS query may return different results based on the namespace of the Pod making it. DNS queries that don't specify a namespace are limited to the Pod's namespace. Access Services in other namespaces by specifying it in the DNS query.
+
+For example, consider a Pod in a test namespace. A data Service is in the prod namespace.
+
+A query for data returns no results, because it uses the Pod's test namespace.
+
+A query for data.prod returns the intended result, because it specifies the namespace.
+
+DNS queries may be expanded using the Pod's /etc/resolv.conf. kubelet configures this file for each Pod. For example, a query for just data may be expanded to data.test.svc.cluster.local. The values of the search option are used to expand queries. To learn more about DNS queries, see the resolv.conf manual page.
+
+nameserver 10.32.0.10
+search <namespace>.svc.cluster.local svc.cluster.local cluster.local
+options ndots:5
+In summary, a Pod in the test namespace can successfully resolve either data.prod or data.prod.svc.cluster.local.
+
+
+DNS Records
+What objects get DNS records?
+1. Services
+2. Pods
+
+
+
+
+
+NodePort :
+OUTSIDE CLUSTER PEOPLE CAN ACCESS OUR APPLICATION FOR THAT WE HAVE NodePort AND LoadBalancer.
+NodePort WE SHOULD NEVER USE IT. BEST USECASE OF NodePort IS LOCAL-TESTING OR TESTING.
+NodePort has RANGE i.e. 30000-32767
+NodePort means Node:port i.e Node-IP:port
+suppose we deploy Kubernetes Dashboard and we just want to give access to internal team then we can use NodePort Service
+
+we should use managed-databases wherever possible. MOST OF THE CLOUD PROVIDERS PROVIDES MANAGED-DATABASES THEN YOU CAN USE APPLICATION TO PROVIDE THOSE DATA.
+
+
+kubectl run nginx --image=nginx
+
+kubectl get pods
+
+kubectl expose pod nginx --type=NodePort --port 80
+
+kubectl get svc
+
+
+Nodeport check via iptables
+sudo iptables -t nat -L -n -v | grep -e NodePort -e KUBE
+sudo iptables -t nat -L -n -v | grep 31188
+
+# THIS MEANS KUBE NodePort ENTRY THERE IS A GENERAL RULE THAT HANDLES NodePort TRAFFIC . CHECKS DESTINATION TYPE IS LOCAL MEANS WHATEVER THE PACKETS ARE COMMING WE WILL ACCEPT IT  AND THEN MATCH IT AND HANDLE IT IN SERVICE NodePort.
+IN iptables THERE IS SOMETHING ALL-NodePortS
+
+kubectl get svc
+
+sudo iptables -t nat -L -n -v | grep <NodePort from kubectl get svc>
+
+AS SOON AS WE CREATE NODEPORT THERE IS AN ENTRY IS CREATED REGARDING NODEPORT.
+
+#get the node ip of that node which we can observe in kubectl get svc
+kubectl get nodes -owide
+
+# run this command few times and check on below iptables command what number is at beginning
+curl node-ip:nodeport
+
+sudo iptables -t nat -L -n -v | grep <NodePort from kubectl get svc>
+
+
+KILLERCODA TRAFFIC PORT ACCESSOR:
+HOST1: COMMON PORTS 80 8080
+
+CUSTOM PORTS: 1234 : Access.
+
+
+
+
+
+# HOW TO RUN THIS COMMAND SHOW WITH AN EXAMPLE AND WHAT AND WHERE IT SHOULD BE USED . EXPLAIN ITS USE-CASES IN 2-3 LINES EASY TO UNDERSTAND AND REMEMBER
+kubectl port-forward
+
+
+# ASK CHATGPT TO EXPLAIN IN EASY TO REMEMBER AND UNDERSTAND WITH FEW LINES WITH EXAMPLES AND WHERE AND HOW SHOULD LoadBalancer BE USED ?
+# WHAT ARE THE USECASES OF LoadBalancer
+what is LoadBalancer ?
+
+
+kubectl run demo --image=nginx
+
+kubectl expose pod demo --type=LoadBalancer --port 80
+
+# above pod demo will always be in pending BECAUSE here service type is LoadBalancer which is provided by cloud provider and that is not availabe here.
+kubectl get svc
+
+clound controler manager listens to the request and create public IP and attach to your pod when we create service type LoadBalancer for a pod.
+
+
+# OBSERVE THE TYPE:LoadBalancer IS SPECIFIED FOR THIS SERVICE
+kubectl get svc demo -oyaml
+
+
+FOR EVERY APPLICATION ENDPOINT WE DON'T HAVE TO CREATE LoadBalancer. IN PRODUCTION LoadBalancer SERVICE IS CREATED LESS BECAUSE IT IS EXPENSIVE.
+
+
+
+
+
+ExternalName SERVICE:
+1. IF WE WANT TO MAKE CALL TO A SERVICE WHICH IS OUTSIDE OF KUBERNETES CLUSTER SUPPOSE AN APPLICATION NEEDS TO TALK TO EXTERNAL DATABASE OR SERVICE THEN i.e. SERVICES WHICH ARE HOSTED OUTSIDE KUBERNETES
+2. ZERO IP MANAGEMENT (WE CAN SPECIFY DNS THERE IS NO USE OF IP)
+3. OUR-APPLICATION >> CREATE ExternalName >> ACCESS DB
+4. ACREOSS NAMESPACE ACCESS >> ONE SERVICE CAN COMMUNICATE WITH ANOTHER SERVICES IN OTHER NAMESPACE i.e. ACROSS NAMESPACES i.e. DIFFERENT NAMESPACES THEN WE CAN COMMUNICATE THROUGH ExternalName. ITS GOOD WHEN ORGS ARE BIG. IT ABSTRACTS THE INFORMATION ABOUT THE IP-ADDRESSES AND SERVICES
+5. UPDATES ARE EASY AS YOU CHANGE ONLY ExternalName AND NOT THE PODS USING IT.
+
+
+controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$ ls
+Dockerfile  app.py  apppod.yaml  db.yaml  db_svc.yaml  externam-db_svc.yaml  requirements.txt
+controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$ cat requirements.txt
+psycopg2-binary
+controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$ cat Dockerfile
+FROM python:3.9-slim
+
+# Set the working directory
+WORKDIR /app
+
+# Add files
+ADD app.py /app/
+ADD requirements.txt /app/
+
+# Install dependencies
+RUN pip install -r requirements.txt
+
+# Command to run the application
+CMD ["python", "app.py"]
+
+
+controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$ cat app.py
+import psycopg2
+import os
+import sys
+
+def main():
+    db_host = os.getenv("DATABASE_HOST")
+    db_port = os.getenv("DATABASE_PORT")
+    db_user = os.getenv("DATABASE_USER", "postgres")
+    db_password = os.getenv("DATABASE_PASSWORD", "example")
+    db_name = os.getenv("DATABASE_NAME", "postgres")
+
+    conn_string = f"host={db_host} port={db_port} dbname={db_name} user={db_user} password={db_password}"
+    print("Connecting to database\n ->%s" % conn_string)
+
+    try:
+        conn = psycopg2.connect(conn_string)
+        cursor = conn.cursor()
+        print("Connected!\n")
+        cursor.execute("SELECT version();")
+        version = cursor.fetchone()
+        print(f"Database version: {version[0]}")
+    except Exception as e:
+        print("Unable to connect to the database.")
+        print(e)
+        sys.exit(1)
+    finally:
+        if conn:
+            conn.close()
+
+if __name__ == "__main__":
+    main()
+
+controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$cat apppod.yaml
+    apiVersion: v1
+kind: Pod
+metadata:
+  name: my-application
+  namespace: application-ns
+spec:
+  containers:
+  - name: app
+    image: ttl.sh/saiyamdemo:1h
+    env:
+      - name: DATABASE_HOST
+        value: "external-db-service"  # FROM externam-db_svc.yaml NAME OF SERVICE IS BEING CALLED HERE
+      - name: DATABASE_PORT
+        value: "5432"
+      - name: DATABASE_USER
+        value: "postgres"
+      - name: DATABASE_PASSWORD
+        value: "example"
+      - name: DATABASE_NAME
+        value: "postgres"
+
+controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$ cat db.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-database
+  namespace: database-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-database
+  template:
+    metadata:
+      labels:
+        app: my-database
+    spec:
+      containers:
+      - name: database
+        image: postgres:latest
+        env:
+          - name: POSTGRES_PASSWORD
+            value: "example"
+        ports:
+        - containerPort: 5432
+controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$ cat db_svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-database-service
+  namespace: database-ns
+spec:
+  selector:
+    app: my-database
+  ports:
+  - protocol: TCP
+    port: 5432
+    targetPort: 5432
+controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$
+
+controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$cat externam-db_svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-db-service
+  namespace: application-ns
+spec:
+  type: ExternalName  # service type ExternalName
+  externalName: my-database-service.database-ns.svc.cluster.local   #<db-service>.<db-namespace>.svc.cluster.local
+  ports:
+  - port: 5432
+
+  when request is coming to "external-db-service" then request is going to externalName setting i.e. "my-database-service.database-ns.svc.cluster.local" which is a DNS Name. This DNS Name is of Database-Service which is my-database-service i.e. why service-name came then the namespace where service is and "svc.cluster.local" is common.
+
+
+CHATGPT EXPLAIN THE CONNECTION AND CALLING OF EACH COMMAND AND FLOW HOW ONE SERVICE AND APPLICATION IS ONE ANOTHER POD AND DATABASE EXPLAIN IT WITH FLOW DIAGRAM AND ALSO MAKE COMMENTED ONE-WORD OR ONE-LINER COMMENTS TO EXPLAIN HOW EACH REFERENCES ARE CALLED AND WHERE IT IS CALLED AND WHY IT IS CALLED
+
+# Create database and app namespaces
+kubectl create ns database-ns
+kubectl create ns application-ns
+
+
+# Create the databas pod and service
+kubectl apply -f db.yaml
+kubectl apply -f db_svc.yaml
+
+# Create ExternalName service
+kubectl apply -f externam-db_svc.yaml
+
+
+# Create Application to access the service Docker build
+docker build --no-cache --platform=linux/amd64 -t ttl.sh/saiyamdemo:1h .
+
+# pushing docker image to registry (this is temporary registry where docker image stays for few hours)
+Docker push docker push ttl.sh/saiyamdemo:1h
+
+kubectl apply -f apppod.yaml
+
+
+
+
+# Check the pod (my-application WHICH IS OF NAMESPACE application-ns ) logs to see if the connection was successful
+kubectl logs my-application -n application-ns
+
+
+so this is another type service called ExternalName mainly used for connecting to ExternalName services which are external to kubernetes cluster or within different namespace or different clusters of different namespaces accross clusters or same clusters in a big organisation like that.
+
+
+
+
+INGRESS ::
+INGRESS IS ALSO KUBERNETES RESOURCES USED FOR EXTERNAL ACCESS.
+HERE KIND WILL BE INGRESS IN DESCRIPTIVE YAML FILE.
+INGRESS IS NATIVE KUBERNETES OBJECTS
+
+TO USE INGRESS WE NEED INGRESS-CONTROLLER SO WE NEED TO DEPLOY INGRESS-CONTROLLER TO OUR KUBERNETES-CLUSTER
+INGRESS-CONTROLLER DEFINE INGRESS IN THEIR OWN WAY.
+
+DIFFERENT INGRESS-CONTROLLER OPEN-SOURCE PROJECTS BY DIFFERENT COMPANIES :
+1. NGINX-CONTROLLER
+2. CONG
+3. TRAFFIC  ETC
+
+WE CAN DEPLOY ANY OF THESE INGRESS CONTROLLER AND CONFIGURE AND CREATE INGRESS RESOURCE
+THEN WE CREATE SERVICE i.e. ClusterIP THEN WE WILL CREATE RESOURCE INGRESS
+
+FLOW IS:
+USER SENDS REQUEST TO INGRESS-CONTROLLER AND REQUEST GOES TO INGRESS AND FROM INGRESS TO CLUSTERIP SERVICE AND THEN REQUEST GOES TO POD
+
+USER > INGRESS-CONTROLLER > INGRESS > CLUSTERIP (SERVICE) > POD
+
+THIS FLOW IS BEST FOR PRODUCTION SETUP BECAUSE WE DEPLOY INGRESS-CONTROLLER AS LoadBalancer AND THEN FOR ACCESS WE HAVE DIFFERENT-DIFFERENT CLUSTERIP SERVICE AND WE CREATE DIFFERENT DIFFERENT INGRESS RESOURCE
+
+
+# EXPLAIN WHY CHATGPT WITH EXAMPLE EASY TO UNDERSTAND
+RULES > PATH BASED ROUTING IS NOT POSSIBLE.
+PATH BASED ROUTING IS NOT POSSIBLE WHEN WE USE STANDARD SERVICE
+
+
+WE CAN DO PATH BASED ROUTING USING INGRESS
+HOST > REACHABLE > DNS OF NGINX INGRESS CONTROLLER
+
+
+deploy.yaml :
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf  # Ensure this matches the filename in the ConfigMap
+      volumes:
+      - name: config-volume
+        configMap:
+          name: nginx-config
+
+
+# we can use different-different services in service section of ingress.yaml so this is called path based routing.
+ingress.yaml :
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bootcamp
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "kubernetes.hindi.bootcamp"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80
+      - path: /public
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80
+
+
+
+nginx.conf :
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    server {
+        listen       80;
+        server_name  localhost;
+
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+
+        location /public {
+            return 200 'Access to public granted!';
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }
+}
+
+if location is / i.e. root address then index.html or index.htm
+if location is /public then return 200 with access to public granted
+if for error-page then error-code like 500... with location 50x.html
+
+svc.yaml :
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+
+
+
+
+
+Deploy all in Ingress folder after creating below config map
+
+
+# creating configMap with name nginx-config using file from above i.e. nginx.conf
+# this same nginx-config name of configMap is used in deployment i.e. deploy.yaml file.
+kubectl create configmap nginx-config --from-file=nginx.conf
+
+kubectl apply -f deploy.yaml
+
+kubectl apply -f svc.yaml
+
+ssh onto the node where the pod is deployed and the change the /etc/hosts file.
+
+
+kubectl get svc
+
+curl <service-cluster-ip-of-nginx-service-from kubectl get svc>
+
+curl <service-cluster-ip-of-nginx-service-from kubectl get svc>/public
+
+
+
+NOW WE NEED TO ACCESS THIS OUTSIDE OF THE CLUSTER WITHOUT USING NODEPORT OR LoadBalancer SERVICE FOR THAT WE WILL INSTALL INGRESS-CONTROLLER
+#Ingres controller:
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/cloud/deploy.yaml
+
+# we will get the ip of the pod running on the node or control-plane
+kubectl get pod -owide
+
+# this will give control-plane and node ip-address
+kubectl get node -owide
+
+
+vi /etc/hosts
+# kubernetes.hindi.bootcamp this is from ingress.yaml file we mentioned in host:
+<node-ip-address> kubernetes.hindi.bootcamp
+
+
+#
+kubectl apply -f ingress.yaml
+
+# getting ingress
+kubectl get ing
+
+kubectl get svc -A
+
+curl kubernetes.hindi.bootcamp
+
+
+curl kubernetes.hindi.bootcamp:<port-of-nginx-controller-at-80>/
+
+curl kubernetes.hindi.bootcamp:<port-of-nginx-controller-at-80>/public
+
+curl kubernetes.hindi.bootcamp:<port-of-nginx-controller-at-80>/pub
+
+
+# ASK CHATGPT HOW IT CREATED IN REAL PRODUCTION THAT IS THIS TRUE OR IF IT IS WRONG CORRECT IT.
+IN CLOUD SETUP
+INGRESS-CONTROLLER IS GENERATED BY LoadBalancer AFTER CREATING INGRESS-CONTROLLER FROM LOADBALANCER THEN WHATEVER THE SERVICES WE CREATE WILL BE CLUSTERIP THEN WE CREATE INGRESS AND host OF INGRESS WOULD BE C-NAME OF LOADBALANCER AND CUSTOM OF SUB-DOMAIN
+
+
+
+
+ExternalDNS:
+CLOUD MANAGED DNS
+POD(POD Implementation is PROVIDER SPECIFIC) > SCAN SVC, INGRESS ] EXTERNAL DNS WILL SYNCHRONIZE WITH PROVIDER DNS
+
+we create pod > we create service > in service we create loadBalancer > wherever dns records are managed (google-dns,azure etc) there we setup ip for website manually then we create pod and ClusterIP service we create then we create ingress (in ingress host c-name record is setup) then c-name record for website is setup in dns . every cloud-provider has their own mechanism for dns.
+
+
+
+
+
+
+
+
+
+externaldnspod.yaml:
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx2
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx2
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: my-app2.saiyampathak.com
+spec:
+  selector:
+    app: nginx
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+
+
+externalDNS :
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-dns
+rules:
+- apiGroups: [""]
+  resources: ["services","endpoints","pods"]
+  verbs: ["get","watch","list"]
+- apiGroups: ["extensions","networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get","watch","list"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-dns-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-dns
+subjects:
+- kind: ServiceAccount
+  name: external-dns
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: external-dns
+  template:
+    metadata:
+      labels:
+        app: external-dns
+    spec:
+      serviceAccountName: external-dns
+      containers:
+      - name: external-dns
+        image: registry.k8s.io/external-dns/external-dns:v0.14.1
+        args:
+        - --source=service
+        - --source=ingress # ingress is also possible
+        - --provider=civo
+        env:
+        - name: CIVO_TOKEN
+          value: ""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

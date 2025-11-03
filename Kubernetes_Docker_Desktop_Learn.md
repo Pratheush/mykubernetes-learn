@@ -5092,8 +5092,6 @@ spec:
 | **RollingUpdate** | Gradual pod replacement  | ❌ No     | “Roll = smooth change”   |
 | **Recreate**      | Delete → then create new | ✅ Yes    | “Recreate = Restart All” |
 
-
-
 **🧾 Kubernetes Deployment — Rollout, Record, and Revision Notes**
 
 ⚙️ **Command Example**
@@ -5129,8 +5127,6 @@ REVISION  CHANGE-CAUSE
 `--record` is now **deprecated** in newer Kubernetes versions.  
 👉 Instead, we manually add a `CHANGE-CAUSE` using an **annotation**.
 
-
-
 ## 🏷️ **Manual Way (Recommended Now)**
 
 You can manually patch your Deployment to add or update the annotation:
@@ -5148,8 +5144,6 @@ you’ll see your custom message under `CHANGE-CAUSE`.
 🧠 *Tip:*
 
 > “Annotation = Manual Record”
-
-
 
 🔁 **Deployment Rollout & Revision Concepts**
 
@@ -5191,8 +5185,6 @@ This brings Deployment back to the image/config of Revision 1.
 
 > “Undo → Go back to old version safely.”
 
-
-
 🧩 **Relationship Between Deployment, ReplicaSet, and Pods**
 
 `Deployment → creates ReplicaSet → creates Pods`
@@ -5206,10 +5198,6 @@ This brings Deployment back to the image/config of Revision 1.
 🧠 *Tip:*
 
 > “Deployment is the boss, ReplicaSet is the manager, Pods are the workers.”
-
-
-
-
 
 ## ⚙️ **Scaling and Control**
 
@@ -5233,8 +5221,6 @@ kubectl rollout resume deploy/bootcamp
 
 > “Pause = Stop updates temporarily, Resume = Continue rollout.”
 
-
-
 ## 🧠 **Quick Summary Table**
 
 | Concept           | Command                                                             | Meaning                         |
@@ -5246,8 +5232,6 @@ kubectl rollout resume deploy/bootcamp
 | Rollback          | `kubectl rollout undo deploy/bootcamp --to-revision=2`              | Revert to old revision          |
 | Scale             | `kubectl scale deploy/bootcamp --replicas=6`                        | Change number of Pods           |
 | Pause / Resume    | `kubectl rollout pause/resume deploy/bootcamp`                      | Temporarily stop/resume rollout |
-
-
 
 ## 🧠 **Simple Memory Tips**
 
@@ -5262,8 +5246,6 @@ kubectl rollout resume deploy/bootcamp
 - 🔸 Recreate → “Downtime but clean start.”
 
 - 🔸 Rollout Undo → “Time travel to old version.”
-
-
 
 FOR RECREATE ::
 
@@ -5301,8 +5283,6 @@ generally we don't do recreate because there is lot of downtime means the applic
 
 so there is difference between rollingUpdate and recreate-strategy in recreate there is a downtime.
 
-
-
 🧾 Kubernetes PROBES — Simple & Complete Notes
 
 ## 🎯 **Why We Need Probes**
@@ -5329,8 +5309,6 @@ Kubernetes gives us **Probes**.
 
 4. **(Optional)** gRPC Probe *(for gRPC-based services)*
 
-
-
 ### 🧩 **1. Readiness Probe**
 
 📌 Checks: **Is the Pod ready to handle traffic?**
@@ -5344,8 +5322,6 @@ Kubernetes gives us **Probes**.
 🧠 *Think:*
 
 > “Readiness = Ready for traffic or not?”
-
-
 
 ### 🧩 **2. Liveness Probe**
 
@@ -5382,8 +5358,6 @@ livenessProbe:
   failureThreshold: 3
 ```
 
-
-
 ### 🧩 **3. Startup Probe**
 
 📌 Checks: **Has the application finished starting up yet?**
@@ -5398,15 +5372,11 @@ livenessProbe:
 
 > “Startup = Let me wake up first, then check me.”
 
-
-
 ### 🧩 **4. GRPC Probe** *(Advanced, optional)*
 
 - Used for apps exposing **gRPC endpoints** instead of HTTP.
 
 - Checks health through gRPC service calls.
-
-
 
 ## 🔄 **Probe Parameter Meanings (Easy Definitions)**
 
@@ -5421,8 +5391,6 @@ livenessProbe:
 🧠 *Tip:*
 
 > “Delay → Timeout → Period → Success → Failure” (D-T-P-S-F = probe sequence memory)
-
-
 
 ⚙️ **Probe Example Summary (from probe2.yaml)**
 
@@ -5453,7 +5421,6 @@ startupProbe:
   initialDelaySeconds: 10
   periodSeconds: 5
   failureThreshold: 10
-
 ```
 
 ## 🧠 **How Probes Work — Flow Explanation (Step-by-Step)**
@@ -5588,8 +5555,6 @@ spec:
           failureThreshold: 10
 ```
 
-
-
 ## 🧩 **Quick Practical Commands**
 
 | Purpose                | Command                                      |
@@ -5600,8 +5565,6 @@ spec:
 | Delete all deployments | `kubectl delete deploy --all`                |
 | Delete all pods        | `kubectl delete pods --all`                  |
 | Delete all ReplicaSets | `kubectl delete rs --all`                    |
-
-
 
 ## 🧠 **Easy Summary to Remember**
 
@@ -5616,8 +5579,6 @@ spec:
 > “Startup → Readiness → Liveness”  
 > (Wake up → Accept → Stay alive)
 
-
-
 ## 💡 **Pro Tips**
 
 - Always use **Startup Probe** for apps with slow boot time (e.g., Spring Boot, Java, .NET).
@@ -5627,8 +5588,6 @@ spec:
 - Use `kubectl describe pod` often to observe **probe failures and restarts** in real time.
 
 - **Too aggressive probe settings** (short delays or timeouts) can cause **unnecessary restarts** — tune them properly.
-
-
 
 ___
 
@@ -5737,8 +5696,6 @@ In the Service’s Endpoints list (`kubectl get ep nginx-service -oyaml`):
 ➡️ So traffic gets split **roughly 10% (canary)** and **90% (stable)**,  
 because Kubernetes load balances equally **across all endpoints**.
 
-
-
 ## 🧠 **Quick Summary — Native Canary Logic (Without Gateway API)**
 
 | Step | Description                                          |
@@ -5752,11 +5709,7 @@ because Kubernetes load balances equally **across all endpoints**.
 
 🪄 **Tip:** This is the “native” way to simulate canary rollout without Istio, Linkerd, or Gateway API.
 
-
-
 ---
-
-
 
 ---
 
@@ -5766,8 +5719,6 @@ because Kubernetes load balances equally **across all endpoints**.
 
 Gateway API is the **next-generation Kubernetes networking API**,  
 replacing old **Ingress** for **more control, flexibility, and standardization**.
-
-
 
 ### 💡 **USE CASES of Gateway API**
 
@@ -5780,8 +5731,6 @@ replacing old **Ingress** for **more control, flexibility, and standardization**
 | **Header Modifiers**                      | Add, remove, or update HTTP headers                                                |
 | **Request Mirroring**                     | Send a copy of live traffic to another backend (for testing)                       |
 | **Traffic Weighting**                     | Weighted routing based on percentages or conditions                                |
-
-
 
 ⚙️ **Basic HTTPRoute Example (Traffic Splitting)**
 
@@ -5807,8 +5756,6 @@ spec:
 → 90% traffic → `nginx-stable`  
 → 10% traffic → `nginx-canary`
 
-
-
 ## 🧠 **Quick Memory Chart**
 
 | Feature   | Native Service Split       | Gateway API Split                             |
@@ -5817,8 +5764,6 @@ spec:
 | Precision | Rough (based on Pod count) | Exact (percentage weights)                    |
 | Features  | Basic load balancing       | Traffic split, mirror, redirect, header rules |
 | Ideal for | Simple clusters            | Production-grade traffic control              |
-
-
 
 🌉 **Gateway API — Simplified & Practical Explanation**
 
@@ -5830,8 +5775,6 @@ it’s the **evolution of Ingress**, giving **more power, flexibility, and clari
 Think of it as:
 
 > “Ingress 2.0 — cleaner, modular, and smarter way to manage network traffic in Kubernetes.”
-
-
 
 ## 🚦 **2️⃣ Why Gateway API (vs Ingress)?**
 
@@ -5846,8 +5789,6 @@ Think of it as:
 ➡️ *Ingress = simple roads*  
 ➡️ *Gateway API = smart traffic system with lanes, lights, and rules*
 
-
-
 *rules*
 
 ---
@@ -5861,16 +5802,12 @@ Think of it as:
 | **HTTPRoute / TCPRoute / GRPCRoute** | Defines routing rules                          | “Traffic Rules” (who goes where) |
 | **BackendRefs**                      | Points to Services                             | “Destination Parking Slots”      |
 
-
-
 ## 🧭 **4️⃣ How It Works (Simple Flow)**
 
 `Client → Gateway (entry) → HTTPRoute (rules) → Service (Pods)`
 
 💡 So Gateway decides **which HTTPRoute to follow**,  
 and HTTPRoute decides **which Service to send traffic to.**
-
-
 
 ## 🚀 **5️⃣ Simple Example — Canary Traffic Split**
 
@@ -5893,7 +5830,6 @@ spec:
   - name: http
     protocol: HTTP
     port: 80
-
 ```
 
 🧩 **HTTPRoute**
@@ -5914,7 +5850,6 @@ spec:
     - name: nginx-canary
       port: 80
       weight: 10
-
 ```
 
 🧠 **How it Works:**
@@ -5924,8 +5859,6 @@ spec:
 - HTTPRoute attaches to Gateway using `parentRefs`.
 
 - Traffic is split: **90% to stable**, **10% to canary** — exactly (not just by pod ratio).
-
-
 
 ## 🧠 **6️⃣ Quick Use Cases to Remember**
 
@@ -5937,8 +5870,6 @@ spec:
 | **Redirects/Rewrites**  | Change URLs before forwarding                    | `/home → /index.html`         |
 | **Header Modification** | Add/remove headers for auth, tracing             | Add `x-user-id` header        |
 | **gRPC Routing**        | Handle gRPC traffic natively                     | gRPC load balancing support   |
-
-
 
 ## 💡 **7️⃣ Easy Memory Map**
 
@@ -5961,8 +5892,6 @@ Think of Kubernetes networking like a **city**:
 | HTTPRoute    | Roads and direction boards         |
 | BackendRefs  | Buildings/shops where traffic goes |
 | Weight       | How many cars go to each road      |
-
-
 
 ## 🧱 Example: Routing HTTP Traffic to a Backend Service
 
@@ -5991,7 +5920,6 @@ metadata:
   name: nginx-gateway-class
 spec:
   controllerName: nginx.org/gateway-controller
-
 ```
 
 2️⃣ Gateway
@@ -6009,7 +5937,6 @@ spec:
     protocol: HTTP
     port: 80
     hostname: "example.com"
-
 ```
 
 3️⃣ HTTPRoute
@@ -6031,7 +5958,6 @@ spec:
     backendRefs:
     - name: my-service
       port: 8080
-
 ```
 
 4️⃣ Backend Service
@@ -6049,7 +5975,6 @@ spec:
   - protocol: TCP
     port: 8080
     targetPort: 8080
-
 ```
 
 ## 🧪 Commands to Run
@@ -6077,7 +6002,6 @@ kubectl get gatewayclass
 kubectl get gateway
 kubectl get httproute
 kubectl get svc
-
 ```
 
 ## 🧠 What Happens
@@ -6087,3 +6011,649 @@ kubectl get svc
 - The **HTTPRoute** matches the path `/`.
 
 - Traffic is forwarded to `my-service:8080`.
+
+---
+
+#### **<mark>ConfigMaps and Secrets</mark>**
+
+---
+
+---
+
+---
+
+### Image pull secrets
+
+🪟 ✅ Docker Build for Windows Platform
+
+`docker buildx build --platform windows/amd64 -t saiyam911/bootcamp-demo:v1 . --push`
+
+🪟 ✅ Docker Build for Linux Platform
+
+`docker buildx build --platform linuxs/amd64 -t saiyam911/bootcamp-demo:v1 . --push`
+
+### 🔍 Breakdown:
+
+- `--platform windows/amd64`: Targets Windows OS with 64-bit architecture. Builds your image for Linux/amd64 (common for Kubernetes nodes).
+
+- `-t saiyam911/bootcamp-demo:v1`: Tags the image.
+
+- `--push`: Pushes the image to Docker Hub.
+
+## ⚠️ Important Notes
+
+- Your **Dockerfile must be compatible with Windows base images**, like:
+
+```dockerfile
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+```
+
+- You need **Docker Desktop with Windows containers enabled**.
+
+- Not all registries or Kubernetes clusters support Windows containers — check compatibility before deploying.
+
+```dockerfile
+FROM python:3.13.9
+RUN pip install kubernetes
+COPY read_config.py /read_config.py
+CMD ["python", "/read_config.py"]
+```
+
+### 🔐 **STEP 2: Expose Environment Variable** `SECRET` **Locally**
+
+Before creating the Kubernetes secret, you need to **set your Docker password** as an environment variable.
+
+#### ✅ Linux/macOS
+
+`export SECRET="your-docker-password"`
+
+**✅ Windows CMD**
+
+`set SECRET=your-docker-password`
+
+✅ Windows PowerShell
+
+`$env:SECRET = "your-docker-password"`
+
+🔐 **STEP 3: Create Docker Registry Secret in Kubernetes**
+
+```powershell
+kubectl create secret docker-registry pullsec \
+  --docker-username=saiyam911 \
+  --docker-password=$SECRET \
+  --docker-email=saiyam911@gmail.com
+```
+
+✅ What this does:
+
+- Creates a secret named `pullsec` of type `docker-registry`.
+
+- Stores credentials so Kubernetes can **pull your private image**.
+
+📦 **STEP 4: Create Pod Manifest (**`pod.yaml`**)**
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bootcamp-demo-pod
+spec:
+  containers:
+  - name: bootcamp-demo
+    image: saiyam911/bootcamp-demo:v1
+  imagePullSecrets:
+  - name: pullsec
+```
+
+✅ What this does:
+
+- Defines a Pod using your private image.
+
+- Tells Kubernetes to use the `pullsec` secret to authenticate.
+
+🚀 **STEP 5: Deploy the Pod**
+
+`kubectl apply -f pod.yaml`
+
+🔍 **STEP 6: Verify Pod Status**
+
+`kubectl get pods -o wide`
+
+## 🧠 MEMORY MNEMONIC: **B.E.S.T. P.O.D.**
+
+| Letter | Meaning                                | Command / Concept                           |
+| ------ | -------------------------------------- | ------------------------------------------- |
+| **B**  | **Build** Docker image                 | `docker buildx ...`                         |
+| **E**  | **Export** `SECRET` locally            | `export SECRET=...`                         |
+| **S**  | **Secret** creation for registry       | `kubectl create secret docker-registry ...` |
+| **T**  | **Tag** image with version             | `-t saiyam911/bootcamp-demo:v1`             |
+| **P**  | **Pod** manifest with imagePullSecrets | `pod.yaml`                                  |
+| **O**  | **Operate** by applying manifest       | `kubectl apply -f pod.yaml`                 |
+| **D**  | **Diagnose** with pod status           | `kubectl get pods -o wide`                  |
+
+---
+
+**<mark>STATEFULSETS, SERVICE, INGRESS</mark>**
+
+## 🧠 What Does “Flat Network” Mean in Kubernetes?
+
+A **flat network** in Kubernetes means:
+
+- All **Pods** across all **Nodes** can communicate **directly** with each other.
+
+- There’s **no NAT (Network Address Translation)** between Pods.
+
+- Every Pod gets a **unique IP address** that’s routable within the cluster.
+
+✅ So yes — **Kubernetes assumes a flat, routable network** for Pod-to-Pod communication.
+
+🔧 How Flat Networking Is Achieved
+This is usually handled by a CNI plugin (Container Network Interface), like:
+
+1. Calico
+2. Cilium
+3. Flannel
+4. Weave
+
+These plugins ensure:
+
+* Pod IPs are reachable across nodes.
+* Network policies can be enforced.
+
+### ✅ Pod IPs Are Ephemeral
+
+> **Pods get dynamic IPs that change when they restart, so direct Pod IP communication is unreliable.**
+
+🧠 *Remember*: Pod IPs are temporary — use Services for stable access.
+
+### ✅ Services Provide Stable Access
+
+> **Kubernetes Services have stable IPs and use Endpoints to route traffic to Pods via kube-proxy (IPTables or IPVS).**
+
+🧠 *Remember*: Services act like traffic routers — even if Pods die and restart, traffic still flows.
+
+## ✅ Correct Concepts
+
+- **Kubernetes Service is an object**: Yes, it abstracts access to a group of Pods.
+
+- **Service has a stable IP**: Yes, every ClusterIP Service gets a **static internal IP**.
+
+- **Service uses endpoints**: Yes, it dynamically tracks the IPs of matching Pods.
+
+- **Traffic routing survives Pod restarts**: Yes, because the Service updates its endpoints automatically.
+
+## ⚠️ Needs Clarification
+
+### ❌ “IPTables maintains the Service IP”
+
+- **Partially true**: IPTables (or IPVS) is used by kube-proxy to **route traffic** from the Service IP to Pod IPs.
+
+- But IPTables doesn’t “maintain” the IP — Kubernetes assigns the IP, and kube-proxy sets up routing rules.
+
+### ❌ “Service uses endpoint and routes through iptables”
+
+- **Better phrased**: kube-proxy watches Services and Endpoints, and uses IPTables rules to forward traffic from the Service IP to the correct Pod IPs.
+
+## 🧠 Easy-to-Remember Flow
+
+### 🔄 How a Kubernetes Service Works
+
+1. **Service**: Gets a stable ClusterIP (e.g., `10.96.0.1`).
+
+2. **Selector**: Matches Pods with specific labels.
+
+3. **Endpoints**: Tracks Pod IPs dynamically.
+
+4. **kube-proxy**: Uses IPTables or IPVS to route traffic from Service IP to Pod IPs.
+
+5. **Pod dies?** No problem — new Pod is added to Endpoints automatically.
+
+### 🔁 Summary Mnemonic: **P.E.S.T.**
+
+| Letter | Meaning                           |
+| ------ | --------------------------------- |
+| **P**  | **Pod IPs are Ephemeral**         |
+| **E**  | **Endpoints track live Pod IPs**  |
+| **S**  | **Service has Stable IP**         |
+| **T**  | **Traffic routed via kube-proxy** |
+
+**MULTICONTAINER POD**
+
+![multicontainer pod.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\multicontainer%20pod.png)
+
+**HERE THIS IS A MULTI-CONTAINER POD AND ITS NAME IS shared-namespace WITH CONTAINER p1 WITH IMAGE BUSYBOX AND CONTAINER p2 WITH IMAGE NGINX.**
+
+In multi-container pod there are shared namespaces like networking namespaces are shared because we can communicate to localhost within eachother. in a **multi-container Pod**, all containers share the **same network namespace**, so they can communicate with each other via `localhost`, just like processes running on the same machine.
+
+As soon as pod is created then CNI(Container Network Interface) like Calico/ Cilium/ Flannel/ Weave attach IP address with network .
+
+The **CNI plugin assigns a unique IP to the Pod**
+
+### 🧠 Easy Explanation:
+
+- In Kubernetes, **all containers inside a Pod share the same network namespace**.
+
+- So the **Pod gets one IP address**, and all its containers use that IP to communicate.
+
+> 🔄 Think of a Pod like a house with multiple rooms (containers) — the house has one address (Pod IP), and everyone inside shares it.
+
+0.
+
+![multi-container pod1.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\multi-container%20pod1.png)
+
+HERE AS YOU CAN SEE IN THIS NODE POD IS CREATED AND IT HAS THREE CONTAINERS
+
+1. Busybox
+
+2. Nginx
+
+3. Pause container holds network namespace
+
+POD get its IP address and this ip-address connects to eth0@if9 interface . eth0 is pods interface 
+
+1.
+
+![multi-container pod1.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\multi-container%20pod1.png)
+
+2.
+
+![multi-container pod2.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\multi-container%20pod2.png)
+
+3.
+
+![multi-container pod3.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\multi-container%20pod3.png)
+
+> In a multi-container Pod, all containers (e.g., Busybox, Nginx) share the **network namespace** held by the **pause container**. The Pod gets a **single IP address**, connected via a **veth pair**: one end (`eth0@ifX`) inside the Pod, and the other in the **node’s root namespace**. Pod's Unique IP is connected to eth0 interface (eth0@ifX) inside the pod.
+
+🧠 *Remember*: Pause container anchors the network; all containers talk through the same Pod IP via `eth0`.
+
+**Kubernetes creates virtual Ethernet (veth) pairs to connect Pods to the node’s network**, but the exact setup (names, structure) can vary based on the **CNI plugin** used (like Calico, Cilium, etc.).
+
+🧠 *Remember*: veth pairs are Pod’s network cables — their style depends on the CNI electrician.
+
+## 🧱 POD CREATION & VERIFICATION
+
+### ✅ `cat << EOF | kubectl apply -f -`
+
+Creates a Pod with two containers: `busybox` and `nginx`.
+
+```yaml
+controlplane:~$ cat << EOF | kubectl apply -f -
+> apiVersion: v1
+kind: Pod
+metadata:
+  name: shared-namespace
+spec:
+  containers:
+    - name: p1
+      image: busybox
+      command: ['/bin/sh', '-c', 'sleep 10000']
+    - name: p2
+      image: nginx
+> EOF
+pod/shared-namespace created
+controlplane:~$
+```
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: shared-namespace
+spec:
+  containers:
+    - name: p1
+      image: busybox
+      command: ['/bin/sh', '-c', 'sleep 10000']
+    - name: p2
+      image: nginx
+```
+
+🧠 *Why it works*: `kubectl apply -f -` reads from stdin and applies the manifest.
+
+```powershell
+controlplane:~$ kubectl get pods -owide
+NAME               READY   STATUS    RESTARTS   AGE   IP            NODE     NOMINATED NODE   READINESS GATES
+shared-namespace   2/2     Running   0          41s   192.168.1.4   node01   <none>           <non
+
+
+# GETTING INTO NODE01
+controlplane:~$ ssh node01
+Last login: Mon Feb 10 22:06:42 2025 from 10.244.0.131
+```
+
+### ✅ `kubectl get pods -o wide`
+
+Shows Pod status, IP, and node location.
+
+🧠 *Key Insight*: The Pod has **one IP** (`192.168.1.4`) shared by both containers.
+
+**🧠 NETWORK NAMESPACE EXPLORATION**
+
+### ✅ `ssh node01`
+
+Accesses the node where the Pod is running.
+
+```bash
+# GETTING THE NETWORK NAMESPACE CREATED ON NODE01
+node01:~$ ip netns list
+cni-9e5781b9-8548-fb12-f265-5c198bdb1888 (id: 1)
+cni-68761b83-4ec5-aa10-1928-1cd3777b24c4 (id: 0)
+cni-dac19c53-ffd4-794f-4cc5-27619180ddda (id: 2)
+```
+
+### ✅ `ip netns list`
+
+Lists all network namespaces created by CNI plugins.
+
+🧠 *True Statement*: These `cni-*` namespaces are created by CNI (e.g., Calico) to isolate Pod networking.
+
+```bash
+node01:~$ kubectl get pods
+E1020 08:46:02.840686    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+E1020 08:46:02.840953    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+E1020 08:46:02.842340    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+E1020 08:46:02.842671    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+E1020 08:46:02.844041    7699 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp 127.0.0.1:8080: connect: connection refused"
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+```
+
+### ⚠️ `kubectl get pods` (on node directly)
+
+Fails because `kubectl` needs access to the control plane API server, not available on the node by default.
+
+🧠 *True Statement*: You can't run `kubectl` on a node unless it's configured with kubeconfig and access to the API server.
+
+```bash
+# LIST NAMESPACE OF NGINX CONTAINER WE CREATED IN THE MULTI-CONTAINER POD
+node01:~$ lsns | grep nginx
+4026532606 mnt         2  6804 root             nginx: master process nginx -g daemon off;
+4026532607 pid         2  6804 root             nginx: master process nginx -g daemon off;
+4026532608 cgroup      2  6804 root             nginx: master process nginx -g daemon off;
+node01:~$
+```
+
+## 🔍 NAMESPACE LINKING TO CONTAINERS
+
+### ✅ `lsns | grep nginx`
+
+Lists namespaces (mnt, pid, cgroup) for the `nginx` process.
+
+🧠 *True Statement*: Each container has its own process, mount, and cgroup namespaces.
+
+```bash
+# HOW TO CHECK PAUSE CONTAINER,HERE 6804 IS PROCESS ID FROM ABOVE COMMAND lsns | grep nginx i.e. LISTING NETWORK NAMESPACE OF NGINX THUS GETTING PROCESS
+# THIS GIVES LIST OF NAMESPACE REPLATED TO NGINX PROCESS 6804
+node01:~$ lsns -p 6804
+        NS TYPE   NPROCS   PID USER  COMMAND
+4026531834 time      147     1 root  /sbin/init
+4026531837 user      147     1 root  /sbin/init
+4026532540 net         4  6678 65535 /pause
+4026532600 uts         4  6678 65535 /pause
+4026532601 ipc         4  6678 65535 /pause
+4026532606 mnt         2  6804 root  nginx: master process nginx -g daemon off;
+4026532607 pid         2  6804 root  nginx: master process nginx -g daemon off;
+4026532608 cgroup      2  6804 root  nginx: master process nginx -g daemon off;
+```
+
+### ✅ `lsns -p 6804`
+
+Shows all namespaces for the `nginx` process (PID 6804).
+
+🧠 *Key Insight*: The `net, uts, ipc` namespace is held by the **pause container** (PID 6678), proving that all containers share the **pause container’s network namespace**.
+
+✅ *True Statement*: Pause container anchors the network namespace for the Pod.
+
+```bash
+# check the network namespace (this gives list of all network namespaces)
+node01:~$ ls -lt /var/run/netns
+total 0
+-r--r--r-- 1 root root 0 Oct 20 08:42 cni-dac19c53-ffd4-794f-4cc5-27619180ddda
+-r--r--r-- 1 root root 0 Oct 20 08:25 cni-68761b83-4ec5-aa10-1928-1cd3777b24c4
+-r--r--r-- 1 root root 0 Oct 20 08:25 cni-9e5781b9-8548-fb12-f265-5c198bdb1888
+```
+
+## 🔗 NETWORK INTERFACE INSPECTION
+
+### ✅ `ls -lt /var/run/netns`
+
+Lists symbolic links to network namespaces created by CNI.
+
+🧠 *True Statement*: These are used by tools like `ip netns exec` to inspect Pod networking.
+
+```bash
+# exec into the namespace or into the pod to see the IP links
+# HERE THIS IS EXEC INTO THE NAMESPACE TO SEE THE IP LINKS
+# THIS IS ON NODE
+node01:~$ ip netns exec cni-dac19c53-ffd4-794f-4cc5-27619180ddda ip link
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+3: eth0@if9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default
+    link/ether b2:3c:c6:4a:ce:9f brd ff:ff:ff:ff:ff:ff link-netnsid 0
+node01:~$
+```
+
+### ✅ `ip netns exec <namespace> ip link`
+
+Shows interfaces inside the Pod's network namespace.
+
+🧠 *Key Insight*: You’ll see `eth0@if9`, which is the Pod’s virtual interface.
+
+✅ *True Statement*: `eth0@if9` is the Pod-side of a **veth pair**.
+
+```bash
+# EXEC INTO THE POD TO SEE THE IP LINKS
+# OBSERVE THAT eth0@if9 is same IP LINK COMMAND WE RAN ABOVE THERE eth0@if9
+controlplane:~$ kubectl exec -it shared-namespace -- ip addr
+Defaulted container "p1" out of: p1, p2
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+3: eth0@if9: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue
+    link/ether b2:3c:c6:4a:ce:9f brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.4/32 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::b03c:c6ff:fe4a:ce9f/64 scope link
+       valid_lft forever preferred_lft forever
+```
+
+### ✅ `kubectl exec -it shared-namespace -- ip addr`
+
+Executes into the Pod (defaults to container `p1`) and shows IP addresses.
+
+🧠 *True Statement*: The Pod has one IP (`192.168.1.4`) and one interface (`eth0@if9`) shared by both containers.
+
+Now you will see eth@9 -> after @ there will be a number and you can then search its corresponding link on the node using ip link | grep -A1 ^9 you will be able to see the same network namespace after link These are the veth pairs or based on the CNI
+
+```bash
+# WE CAN SEE CORRESPONDING LINK THAT 9 IS FROM eth0@9 INTERFACE SO 9 LINKED TO link-netns cni-dac19c53-ffd4-794f-4cc5-27619180ddda  
+node01:~$ ip link | grep -A1 ^9
+9: caliede2c6f02d9@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netns cni-dac19c53-ffd4-794f-4cc5-27619180ddda
+node01:~$
+
+# @9 IS LINK TO NETWORK NAMESPACE i.e. "cni-dac19c53-ffd4-794f-4cc5-27619180ddda (id: 2)"
+# THIS IS ON HOST AND veth pair OF HOST i.e. CALICO PAIR "caliede2c6f02d9@if3" IS LINKED TO NETWORK NAMESPACE "link-netns cni-dac19c53-ffd4-794f-4cc5-27619180ddda"
+node01:~$ ip link | grep -A1 ^9
+9: caliede2c6f02d9@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netns cni-dac19c53-ffd4-794f-4cc5-27619180ddda
+node01:~$ ip netns list
+cni-9e5781b9-8548-fb12-f265-5c198bdb1888 (id: 1)
+cni-68761b83-4ec5-aa10-1928-1cd3777b24c4 (id: 0)
+cni-dac19c53-ffd4-794f-4cc5-27619180ddda (id: 2)
+node01:~$
+```
+
+## 🔗 HOST-SIDE VETH PAIR
+
+### ✅ `ip link | grep -A1 ^9`
+
+Finds the host-side veth pair (`caliede2c6f02d9@if3`) linked to the Pod’s network namespace.
+
+🧠 *True Statement*: This confirms the veth pair — one end in the Pod (`eth0@if9`), one in the node (`calico...@if3 :: caliede2c6f02d9@if3`) Llinked to network namespace cni-dac19c53-ffd4-794f-4cc5-27619180ddda.
+
+- Every Pod gets a **veth pair**: one end (`eth0@ifX`) inside the Pod, one end (`vethXYZ@ifY`) on the host.
+
+- The host-side veth (e.g., `caliede2c6f02d9@if3`) connects the Pod to the node’s network via the CNI plugin (like Calico).
+
+- `ip link | grep -A1 ^9` helps trace the veth pair by showing interface 9 and the next line (e.g., `eth0@if9` ↔ `veth@if3`).
+
+- The **host-side veth** lives in the **node’s network namespace**, while the other end (`eth0`) lives inside the Pod. So when we say “host-side veth,” we’re referring to the part of the veth pair that connects the Pod to the **node (host) network stack**.
+
+## ✅ FINAL VERDICT ON STATEMENTS
+
+| Statement                                     | Verdict | Explanation                                                   |
+| --------------------------------------------- | ------- | ------------------------------------------------------------- |
+| Pod has one IP shared by all containers       | ✅       | All containers share the pause container’s network namespace. |
+| Pause container holds the network namespace   | ✅       | It’s the anchor for Pod networking.                           |
+| Pod IP connects to `eth0@ifX` inside Pod      | ✅       | That’s the Pod-side veth interface.                           |
+| Host has matching veth pair in root namespace | ✅       | CNI sets up this pair for routing.                            |
+| `kubectl` fails on node without API access    | ✅       | Needs kubeconfig and API server access.                       |
+| `ip netns list` shows CNI namespaces          | ✅       | Created by plugins like Calico.                               |
+| `lsns -p <PID>` shows container namespaces    | ✅       | Confirms shared or isolated namespaces.                       |
+
+
+
+
+
+-----
+
+### 🧠 What Is a Pause Container?
+
+In Kubernetes, **every Pod** (except for some very specific cases) includes a **pause container**. This container is not for running your app — it's a tiny container that serves a critical purpose:
+
+- 🧩 **It holds the network namespace** for the Pod.
+
+- 🛡️ **It acts as the parent container** for all other containers in the Pod.
+
+- 📡 It ensures that all containers in the Pod share the same IP address and port space.
+
+- **Every Pod** will have **one pause container**.
+
+- It’s created **automatically** by the kubelet when the Pod starts.
+
+- Your app containers are then launched inside the same namespace as the pause container.
+
+### ❗ Exceptions:
+
+- **Single-container Pods** in some container runtimes (like `containerd` with certain configurations) may optimize away the pause container.
+
+- **Windows Pods** use a different mechanism and may not use a pause container in the same way.
+
+---
+
+**containerd does create a network namespace**, but with help from the **CNI plugin**.
+
+### 🔧 3-Liner Breakdown:
+
+- 🧠 `containerd` itself handles container lifecycle (start, stop, etc.), but **delegates networking** to the CNI plugin.
+
+- 🌐 When a Pod is created, the **CNI plugin** (like Calico, Flannel) sets up the **network namespace** and veth pair.
+
+- 🔗 `containerd` then launches the container inside that **pre-configured network namespace**, linking it to the node.
+
+
+
+
+
+**🚦 Intra-Node Pod Communication**
+
+
+
+![inter node pod communication.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\inter%20node%20pod%20communication.png)
+
+
+
+FLOW OF INTRA-NODE POD COMMUNICATION :
+
+![inter node pod communication.png flow.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\inter%20node%20pod%20communication.png%20flow.png)
+
+🚦 Intra-Node Pod Communication:
+
+#### 🧱 Setup:
+
+- Each Pod has its own **network namespace**.
+
+- Each Pod connects to the node via a **veth pair**: `eth0` in Pod ↔ `vethX` in node.
+
+- The node uses a **bridge** (e.g., `br1234`) to connect all Pod interfaces.
+
+
+
+### 🔄 Traffic Flow: Pod A → Pod B (Same Node)
+
+1. **Pod A sends packet via** `eth0` 
+   → This goes out through its veth pair (`veth1`).
+
+2. **Packet enters the node’s root namespace** 
+   → `veth1` connects to the bridge (`br1234`).
+
+3. **Bridge receives the packet** 
+   → It checks the **ARP table** to resolve Pod B’s IP to its MAC address.
+
+4. **Bridge forwards packet to Pod B’s veth (**`veth2`**)** 
+   → This is the host-side of Pod B’s veth pair.
+
+5. **Packet enters Pod B via** `eth0` 
+   → Pod B receives the traffic as if it came from a regular network.
+
+
+
+
+
+**🌐 Inter-Node Pod Communication : Node-Node Communication**
+
+![node to node communication.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\node%20to%20node%20communication.png)
+
+
+
+**DEFAULT GATEWAY :**
+
+
+
+![default gateway.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\default%20gateway.png)
+
+
+
+**Node to Node Communication flow :**
+
+
+
+![node to node communication.png flow.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\node%20to%20node%20communication.png%20flow.png)
+
+🌐 Inter-Node Pod Communication
+
+#### 🧱 Setup:
+
+- Each Pod lives in its own **network namespace** on a **node**.
+
+- Pods connect to the node via **veth pairs** and a **bridge**.
+
+- Nodes communicate over physical interfaces like `eth0`.
+
+
+
+### 🔄 Traffic Flow: Pod A (Node 1) → Pod B (Node 2)
+
+1. **Pod A sends packet via** `eth0` 
+   → The packet exits Pod A through its veth pair and enters Node 1’s root namespace.
+
+2. **Bridge on Node 1 checks ARP table** 
+   → Realizes Pod B is **not on the same node**, so ARP **cannot resolve** it directly.
+
+3. **Node 1 routes packet to default gateway** 
+   → Uses routing table to forward packet via `eth0` to Node 2.
+
+4. **Packet travels across the network** 
+   → Could be via overlay (VXLAN), underlay (BGP), or direct routing — handled by CNI plugin (e.g., Calico).
+
+5. **Node 2 receives packet on** `eth0` 
+   → Routing table and CNI plugin forward it to Pod B’s veth interface.
+
+6. **Pod B receives packet via** `eth0` 
+   → Communication complete!
+
+This flow involves **routing**, not just bridging. ARP works only within the same node — for cross-node traffic, routing and CNI plugins take over.

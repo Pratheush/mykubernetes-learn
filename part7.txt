@@ -1,7 +1,460 @@
 
 ConfigMaps and Secrets
 
+ConfigMaps are kuberenets object where we store or keep non-confidential in key-value pair data like configuration for the application or
 
+like environment configuration for the application ,
+just like volume we mount it and use it.
+
+USING ConfigMap IN DIFFERENT WAYS :
+1. inside a container command and args
+2. Environment variables for a container inside application (How To Use ConfigMap as Environment Variable)
+3. Add a file in read-only volume for the application to read
+4. Write code to run inside the pod that uses the kuberenets API to read a ConfigMap (Interact with kuberenets Api programatically)
+
+User creates ConfigMap and user creates an Application. Now change or modify ConfigMap then we have to restart the application because application does not sync by itself (for this inside argo there is something that synchronize or there is another project configSync but now there are new solutions developed to synchronize but if we think natively then we have to restart)
+
+if we use ConfigMap as mounted volume and in that there is no sub-path(like for example there is no /mnt/var etc meaning multiple paths are not there means on one path no other multiple paths ) then in that case configMap changes are reflected in filesystem mounted and in any other cases we have to do restart mechanism. And that setting is configured in configMapAndSecretChangeDetectionStrategy in kubelet setting.
+
+we can make configMap immutable by configuring immutable=true
+we use this when suppose we create an application and we don't want anyone want to accidentally change or touch then we can add immutable field with true value then in that case that configMap cannot be updated only delete or recreate
+
+kubectl create configmap bootcamp-configmap --from-literal=username=saiyam --from-literal=database_name=exampledb
+
+controlplane:~$ kubectl create configmap bootcamp-configmap --from-literal=username=saiyam --from-literal=database_name=exampledb
+configmap/bootcamp-configmap created
+controlplane:~$ kubectl get secrets
+No resources found in default namespace.
+controlplane:~$ kubectl get configmaps
+NAME                 DATA   AGE
+bootcamp-configmap   2      31s
+kube-root-ca.crt     1      29d
+controlplane:~$ kubectl get configmaps bootcamp-configmap -oyaml
+apiVersion: v1
+data:
+  database_name: exampledb
+  username: saiyam
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2025-10-19T15:33:27Z"
+  name: bootcamp-configmap
+  namespace: default
+  resourceVersion: "4034"
+  uid: 15cef121-6975-4be8-8ee1-cfd0111498a2
+controlplane:~$
+
+
+
+EXAMPLE 1: ConfigMap CAN BE USED AS ENVIRONMENT VARIABLE
+Creating config map to demonstrates how you can have a user for the database where user is passed in as a config map as an env:
+
+cm1.yaml :
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bootcamp-configmap
+data:       # in configMap we specify key-value like this here in first like key is username and value is saiyam
+  username: "saiyam"
+  database_name: "exampledb"
+
+pod1.yaml :
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql-pod
+spec:
+  containers:
+  - name: mysql
+    image: mysql:5.7
+    env:
+      - name: MYSQL_USER # environment variable name used for mysql to specify user
+        valueFrom:
+          configMapKeyRef:
+            name: bootcamp-configmap #passing configMap name as reference where key i.e. username can be reffered from the configMap
+            key: username
+      - name: MYSQL_DATABASE  # environment variable name used for mysql to specify database name
+        valueFrom:
+          configMapKeyRef:
+            name: bootcamp-configmap #passing configMap name as reference where key i.e. db name can be reffered from the configMap
+            key: database_name
+      - name: MYSQL_PASSWORD
+        value: demo123  # Specify a strong password.
+      - name: MYSQL_ROOT_PASSWORD
+        value: demo345 # You should change this value.
+    ports:
+      - containerPort: 3306
+        name: mysql
+    volumeMounts:
+      - name: mysql-storage
+        mountPath: /var/lib/mysql
+  volumes:
+    - name: mysql-storage
+      emptyDir: {}
+
+
+kubectl apply -f cm1.yaml
+kubectl apply -f pod1.yaml
+
+# this will give mysql terminal
+kubectl exec -it mysql-pod -- mysql -u root -p
+
+# we can check here that user defined in configMap is created
+SELECT user FROM mysql.user;
+
+#we can check here that database name defined in configMap is created
+SHOW DATABASES;
+
+
+
+Example 2 demonstrates a practical use case where the dev/prod properties can be defined and used for the application when required. In prod your application should be able to read config from the file located at /etc/config/settings.properties. This could mean parsing the file on startup or dynamically reading values when required.
+
+cm2.yaml:
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-dev
+data:
+  settings.properties: |
+    # Development Configuration
+    debug=true
+    database_url=http://dev-db.example.com
+    featureX_enabled=false
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-prod
+data:
+  settings.properties: |   # this seems settings.properties work like a file or create a file with name settings.properties
+    # Production Configuration
+    debug=false
+    database_url=http://prod-db.example.com
+    featureX_enabled=true
+
+pod2.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-web-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-web-app
+  template:
+    metadata:
+      labels:
+        app: my-web-app
+    spec:
+      containers:
+      - name: web-app-container
+        image: nginx
+        ports:
+        - containerPort: 80
+        env:
+        - name: ENVIRONMENT
+          value: "development"
+        volumeMounts:
+        - name: config-volume # this config name should be same as mentioned below in volume
+          mountPath: /etc/config # this tells where to mount the configMap location with file name : etc/config/settings.properties
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config-dev  # this is referenced from configMap name
+
+
+kubectl aply -f cm2.yaml
+kubectl apply -f pod2.yaml
+
+# give us terminal of app now run ls inside to look into /etc/config to find settings.properties file and run cat command on file to # see all the defiend key-value pairs .
+kubectl exec -it <pod-name> -- bash
+
+kubectl exec -it <pod-name> -- cat /etc/config/settings.properties
+
+#use this entire example in chatgpt and then try to make notes of it and understand what is happening how configMap is working here ?
+Exmaple 3 How can you make it run programatically
+
+cd example3
+docker build -t ttl.sh/hindi-boot:1h .
+docker push ttl.sh/hindi-boot:1h
+kubectl apply -f app.yaml
+kubectl logs -l app=config-reader
+
+we can use this concept of ConfigMap very well with prometheus
+
+SECRETS ARE SENSITIVE DATA LIKE PASSWORDS, TOKENS. we don't need to put inside code.
+secrets are not encrypted. Different mechanism that we can use like secret store csi driver or sealed secrets or external secrets operator.
+how Different mechanism that we can use like secret store csi driver or sealed secrets or external secrets operator ? ask chatgpt for examples on these three mechanisms for easy to understand.
+
+kuberenets secrets with secrets store CSI Driver kubesimplify
+streamline your kuberenets SECRETS with external secrets operator.kubesimplify
+sealed secrets for kuberenets - enabling gitops for secrets.kubesimplify
+
+secret store csi driver:
+CSI driver communicated with the provider using gRPC to fetch the mount contents from external secrets store.
+Supported Providers:
+1. Akeyless Provider
+2. AWS Provider
+3. Azure Provider
+4. GCP Provider
+5. Vault Provider
+
+CSI is container storage Interface
+Vault Provider : we install hashicorp vault and mount volume from vault
+
+Sync as kuberenets secrets which is supported by all providers
+
+To use secrets securely use external secret store something like sealed secrets or secret store csi driver external secrets operator
+
+TYEPS OF SECRETS :
+BUILT-IN Type : USAGE
+Opaque(default) : arbitrary user-defined data
+kubernetes.io/service-account-token : ServiceAccount token (legacy : kubectl create token)
+kubernetes.io/dockercfg : serialized ~/.dockercfg file
+kubernetes.io/dockerconfigjson : serialized ~/.docker/config.json file
+kubernetes.io/basic-auth (use opaque) : credentials for basic authentication ( we need to provide username and password)
+kubernetes.io/ssh-auth (add ssh key): credentials for SSH authentication
+kubernetes.io/tls(used tls cer, tls key) : data for a TLS client or server
+bootstrap.kubernetes.io/token (used by kubernetes internally): bootstrap token data
+
+
+when we have to pull docker image from private registry then use kubernetes.io/dockercfg or kubernetes.io/dockerconfigjson
+
+majorly we use kubernetes.io/dockercfg or kubernetes.io/dockerconfigjson or Opaque(default) or kubernetes.io/tls
+
+kubernetes.io/service-account-token  this is used when we need token . kubectl create token.
+
+
+image pull secrets > secrets > kubectl create secret docker-registry
+
+Secrets
+# imperative way
+kubectl create secret generic my-opaque-secret --from-literal=password=supersecret
+
+kubectl get secret
+
+kubectl get secret my-opaque-secret -oyaml
+
+controlplane:~$ kubectl create secret generic my-opaque-secret --from-literal=password=supersecret
+secret/my-opaque-secret created
+controlplane:~$ kubectl get secrets
+NAME               TYPE     DATA   AGE
+my-opaque-secret   Opaque   1      22s
+controlplane:~$ kubectl get secrets my-opaque-secret -oyaml
+apiVersion: v1
+data:
+  password: c3VwZXJzZWNyZXQ=
+kind: Secret
+metadata:
+  creationTimestamp: "2025-10-18T14:01:17Z"
+  name: my-opaque-secret
+  namespace: default
+  resourceVersion: "3715"
+  uid: 2d7791d9-9087-4813-8e36-39876ae92a8c
+type: Opaque
+controlplane:~$ echo "c3VwZXJzZWNyZXQ=" | -d base64
+-d: command not found
+controlplane:~$ echo "c3VwZXJzZWNyZXQ=" |  base64 -d
+supersecretcontrolplane:~$
+
+kubernetes secrets are not so secure we tend to use external like bitnami sealed secrets or unified secrets operator
+
+
+controlplane:~$ echo "supersecret" | base64
+c3VwZXJzZWNyZXQ=
+
+vi sec.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-opaque-secret
+type: Opaque
+data:
+  password: c3VwZXJzZWNyZXQ=  # base64 encoded value of 'supersecret'
+
+kubectl apply -f sec.yaml
+
+kubectl get secret
+
+kubectl get secret my-opaque-secret -oyaml
+
+when we are creating secret through yaml then we use base64 encoded secret. but we do not just copy paste this secret yaml file in our github repository. as kubernetes admin we should not create this way
+
+
+# generic secret
+kubectl create secret generic my-opaque-secret --from-literal=password=supersecret
+
+# BASIC-AUTH SECRET : in basic auth secret either username or password is mandatory
+kubectl create secret generic my-basic-auth-secret \
+--from-literal=username=myuser \
+--from-literal=password=mypassword \
+--type=kubernetes.io/basic-auth
+
+
+
+# if we want to create ssh-key secret
+kubectl create secret generic my-ssh-key-secret \
+--from-file=ssh-privatekey=/path/to/.ssh/id_rsa \
+--type=kubernetes.io/ssh-auth
+
+controlplane:~$ ssh-keygen
+Generating public/private ed25519 key pair.
+Enter file in which to save the key (/root/.ssh/id_ed25519):
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /root/.ssh/id_ed25519
+Your public key has been saved in /root/.ssh/id_ed25519.pub
+The key fingerprint is:
+SHA256:mDR9L4+3sK0wARZHEceUZ42HRyu+GnjHidlQZWIQ9Og root@controlplane
+The key's randomart image is:
++--[ED25519 256]--+
+|      ..=**+o=+  |
+|       + .o+=++. |
+|      = . oo+o.  |
+|     o = o + .   |
+|      o S E o    |
+|         o X o   |
+|        + B O    |
+|         + O .   |
+|          +.o    |
++----[SHA256]-----+
+controlplane:~$ kubectl create secret generic my-ssh-key-secret --from-file=ssh-privatekey=/root/.ssh/id_ed25519 --type=kubernetes.io/ssh-auth
+secret/my-ssh-key-secret created
+
+controlplane:~$ kubectl get secret my-ssh-key-secret -oyaml
+apiVersion: v1
+data:
+  ssh-privatekey: LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQkc1dmJtVUFBQUFFYm05dVpRQUFBQUFBQUFBQkFBQUFNd0FBQUF0emMyZ3RaVwpReU5UVXhPUUFBQUNBNCtkaWhHaVFYS0U2blpvRW9UaXJLNTdnYkhDdXkvRXJPZmZhRmxQeGtVUUFBQUpqSW01eVN5SnVjCmtnQUFBQXR6YzJndFpXUXlOVFV4T1FBQUFDQTQrZGloR2lRWEtFNm5ab0VvVGlySzU3Z2JIQ3V5L0VyT2ZmYUZsUHhrVVEKQUFBRURBaHBvajZSVUs0TnFMYS9iRGhEOVYrMCt1ckJuSGdjMTkyc2RQRGxsekp6ajUyS0VhSkJjb1RxZG1nU2hPS3Nybgp1QnNjSzdMOFNzNTk5b1dVL0dSUkFBQUFFWEp2YjNSQVkyOXVkSEp2YkhCc1lXNWxBUUlEQkE9PQotLS0tLUVORCBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0K
+kind: Secret
+metadata:
+  creationTimestamp: "2025-10-18T14:32:52Z"
+  name: my-ssh-key-secret
+  namespace: default
+  resourceVersion: "4453"
+  uid: 3c3c911d-7120-4ba5-85f9-a7e5f86715da
+type: kubernetes.io/ssh-auth
+
+
+# tls secret key : here we need cert file
+kubectl create secret tls my-tls-secret \
+--cert=path/to/cert/file \
+--key=path/to/key/file
+
+
+kubectl delete deploy --all
+
+kubectl delete cm --all
+
+kubectl delete pods --all
+
+
+# secret name mysql-root-pass we use it in pod3.yaml with refering
+kubectl create secret generic mysql-root-pass --from-literal=password='abc123'
+
+# secret name mysql-user-pass we use it in pod3.yaml with refering
+kubectl create secret generic mysql-user-pass --from-literal=password='saiyampass'
+
+kubectl get secrets
+
+pod3.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef: # referencing from secret i.e. name mysql-root-pass for key value i.e. password
+                name: mysql-root-pass
+                key: password
+          - name: MYSQL_USER
+            valueFrom:
+              configMapKeyRef:  # referencing from configMap i.e. name bootcamp-configmap for key value i.e. username
+                name: bootcamp-configmap
+                key: username
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:     # referencing from secret i.e. name mysql-user-pass for key value i.e. password
+                name: mysql-user-pass
+                key: password
+          - name: MYSQL_DATABASE
+            valueFrom:
+              configMapKeyRef:  # referencing from configMap i.e. name bootcamp-configmap for key value i.e. database_name
+                name: bootcamp-configmap
+                key: database_name
+        ports:
+          - containerPort: 3306
+        volumeMounts:
+          - name: mysql-storage
+            mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          emptyDir: {}
+
+
+cm1.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bootcamp-configmap
+data:
+  username: "saiyam"
+  database_name: "exampledb"
+
+kubectl apply -f cm1.yaml
+
+kubectl apply -f pod3.yaml
+
+kubectl get pods
+
+# gives mysql terminal then gives password
+kubectl exec -it <pod-name> -- mysql -u root -pabc123
+
+
+
+# creating or build docker image and push it into docker repository and make it private repository
+docker buildx build --platform linux/amd64 -t saiyam911/bootcamp-demo:v1 . --push
+
+# creating secret but secret type is not generic type but docker-registry with name pullsec and we are providing docker-username/password/email and docker-password : exposing environment variable SECRET at local
+kubectl create secret docker-registry pullsec --docker-username saiyam911 --docker-password $SECRET --docker-email saiyam911@gmail.com
+
+
+kubectl get pods -owide
+
+pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bootcamp-demo-pod
+spec:
+  containers:
+  - name: bootcamp-demo
+    image: saiyam911/bootcamp-demo:v1
+  imagePullSecrets:
+  - name: pullsec
+
+
+kubectl apply -f pod.yaml
+
+kubectl get pods
+
+exposing environment variable SECRET at local
+
+caching is important and we can improve and fast up builds
 
 
 
