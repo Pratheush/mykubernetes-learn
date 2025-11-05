@@ -989,7 +989,7 @@ RESOURCES ARE PLURAL SO WHEN WE MAKE RESP-API CALLS THEN WE USE OR DEFINE AS i.e
 
 ***
 
-**<mark>YAML, POD, POD LIFECYCLE, INIT CONTAINERS, SIDECAR CONTAINERS</mark>**
+##### PART 3 **<mark>YAML, POD, POD LIFECYCLE, INIT CONTAINERS, SIDECAR CONTAINERS</mark>**
 
 ![GOAl.png](D:\Kubernetes%20Learning\kube_screenshot\YAML,%20POD,%20POD%20LIFECYCLE,%20INIT%20CONTAINERS,%20SIDECAR%20CONTAINERS\GOAl.png)
 
@@ -1631,7 +1631,7 @@ HERE FOUR CONTAINER ARE RUNNING IN THE POD FIRST TWO CONTAINER RAN AND EXIT AND 
 
 ****
 
-<mark>SIDECAR CONTAINER, QOS, PDB, REQUEST_LIMIT</mark>
+##### PART 4 <mark>SIDECAR CONTAINER, QOS, PDB, REQUEST_LIMIT</mark>
 
 USECASE OF SIDECAR CONTAINER ::
 
@@ -2796,7 +2796,7 @@ FINDING BEST FIT NODE FOR POD :
 
 ***
 
-**<mark>KUBERNETES SCHEDULING</mark>**
+##### PART 5 **<mark>KUBERNETES SCHEDULING</mark>**
 
 **<mark>🚀 Kubernetes Scheduling Fundamentals</mark>**
 
@@ -4414,7 +4414,7 @@ ___
 
 ---
 
-**<mark>PART-6 : DEPLOYMENTS, REPLICASET, PROBES, DEPLOYMENT STRATEGIES</mark>**
+##### PART 6 **<mark> DEPLOYMENTS, REPLICASET, PROBES, DEPLOYMENT STRATEGIES</mark>**
 
 # 🧩 ReplicaSet, Deployment & Traffic Splitting — Simple Notes
 
@@ -6014,13 +6014,1549 @@ kubectl get svc
 
 ---
 
-#### **<mark>ConfigMaps and Secrets</mark>**
+##### PART 7 **<mark>ConfigMaps and Secrets</mark>**
+
+# 🧩 **ConfigMaps & Secrets**
 
 ---
 
----
+## 🔹 **What is a ConfigMap?**
+
+👉 A **ConfigMap** stores **non-confidential configuration data** (key–value pairs) for your application.  
+Use it when you want to **separate configuration from code**.
+
+📦 Example: database name, username, environment settings, etc.
+
+⚙️ **Creating a ConfigMap**
+
+```powershell
+kubectl create configmap bootcamp-configmap \
+  --from-literal=username=saiyam \
+  --from-literal=database_name=exampledb
+```
+
+✅ **Meaning:**
+
+- Creates a ConfigMap named `bootcamp-configmap`
+
+- Stores two keys:
+  
+  - `username = saiyam`
+  
+  - `database_name = exampledb`
+
+
+
+🔍 **Check the ConfigMap**
+
+```powershell
+kubectl get configmaps
+kubectl get configmaps bootcamp-configmap -o yaml
+```
+
+## 🧠 **4 Ways to Use a ConfigMap**
+
+| Usage                                    | Description                                 | Example                             |
+| ---------------------------------------- | ------------------------------------------- | ----------------------------------- |
+| 1️⃣ Inside container `command` or `args` | Pass as input to a command                  | `args: ["--config=$(CONFIG_PATH)"]` |
+| 2️⃣ As **Environment Variable**          | Inject values directly                      | `envFrom: configMapRef:`            |
+| 3️⃣ As **Mounted File (Volume)**         | Mount config files inside container         | `/etc/config/...`                   |
+| 4️⃣ Programmatically (via K8s API)       | App reads ConfigMap using Kubernetes client | Used in advanced apps               |
+
+
+
+## 🔄 **ConfigMap Updates**
+
+🧠 Remember:
+
+- If ConfigMap is **used as env variable**, the pod **won’t auto-refresh** → you must **restart the pod**.
+
+- If **mounted as a volume (no subPath)** → updates **automatically reflect** inside the file.
+
+- Controlled by:  
+  `configMapAndSecretChangeDetectionStrategy` in **kubelet config**.
+
+- if we use ConfigMap as mounted volume and in that there is no sub-path(like for example there is no /mnt/var etc meaning multiple paths are not there means on one path no other multiple paths ) then in that case configMap changes are reflected in filesystem mounted and in any other cases we have to do restart mechanism. And that setting is configured in configMapAndSecretChangeDetectionStrategy in kubelet setting.
+
+- When you **change or modify a ConfigMap**, the **application (Pod) does not automatically detect or reload the new values**.  
+  In native Kubernetes, you must **restart the Pod** to pick up the updated ConfigMap. Some external tools like **Argo CD (with auto-sync)** or **Config Sync** can automatically synchronize these changes without a manual restart.
+
+- ### 💡 **Why restart?**
+  
+  - Pods **load ConfigMap values only at startup**.
+  
+  - After startup, they don’t continuously “watch” for ConfigMap changes.
+  
+  - So when you update ConfigMap → Pod still uses old data → needs restart.
+
+### ⚙️ **Exception / Special Cases**
+
+- If the ConfigMap is **mounted as a Volume (without subPath)** → the **file on disk updates automatically**.  
+  But the **app must reread** that file itself to notice changes.
+
+- If ConfigMap is **used as environment variables**, restart is **always required**.
+
+- Tools like **Argo CD**, **Config Sync**, or **Stakater Reloader** automate the restart/sync process.
+
+### 🪄 **One-Line Memory Trick**
+
+> **“ConfigMap changes don’t auto-reach the Pod — restart POD or use sync tools.”**
+
+
+
+## 🔐 **Immutable ConfigMap**
+
+Make a ConfigMap **read-only (can’t modify)**:
+
+`immutable: true`
+
+✅ Prevents accidental changes — you can only **delete and recreate** it.
+
+
+
+
+
+
+
+## 🔒 **What is a Secret?**
+
+A **Secret** is like a ConfigMap but for **sensitive data** (passwords, tokens, certificates).  
+Data is **base64 encoded**.
+
+```powershell
+kubectl create secret generic db-secret \
+  --from-literal=password=mysecretpassword
+```
+
+
+
+## 🧭 **ConfigMap vs Secret (Quick Table)**
+
+| Feature   | ConfigMap            | Secret                  |
+| --------- | -------------------- | ----------------------- |
+| Data Type | Non-confidential     | Confidential            |
+| Storage   | Plain text           | Base64 encoded          |
+| Use For   | App config, settings | Passwords, tokens, keys |
+| Editable  | Yes (or immutable)   | Yes (or immutable)      |
+
+
+
+## 🧠 **Memory Shortcut**
+
+> **ConfigMap → Configuration (non-secret)**  
+> **Secret → Secure (passwords, tokens)**
+
+
+
+## 🔁 **Full Process Recap**
+
+| Step | Command                        | Purpose                  |
+| ---- | ------------------------------ | ------------------------ |
+| 1️⃣  | `kubectl create configmap ...` | Create ConfigMap         |
+| 2️⃣  | `kubectl get configmaps`       | Verify it                |
+| 3️⃣  | Use it in Pod (env/volume)     | Application reads values |
+| 4️⃣  | Restart pod if needed          | To apply new config      |
+| 5️⃣  | Optional: `immutable: true`    | Lock the config          |
+
+🧩 **Easy Example in Pod (Using ConfigMap as Env)**
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-pod
+spec:
+  containers:
+  - name: demo
+    image: nginx
+    envFrom:
+    - configMapRef:
+        name: bootcamp-configmap
+
+```
+
+✅ This will inject all ConfigMap keys as environment variables in the container.
+
+COMMAND:
+
+```powershell
+controlplane:~$ kubectl create configmap bootcamp-configmap --from-literal=username=saiyam --from-literal=database_name=exampledb
+configmap/bootcamp-configmap created
+controlplane:~$ kubectl get secrets
+No resources found in default namespace.
+controlplane:~$ kubectl get configmaps
+NAME                 DATA   AGE
+bootcamp-configmap   2      31s
+kube-root-ca.crt     1      29d
+controlplane:~$ kubectl get configmaps bootcamp-configmap -oyaml
+apiVersion: v1
+data:
+  database_name: exampledb
+  username: saiyam
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2025-10-19T15:33:27Z"
+  name: bootcamp-configmap
+  namespace: default
+  resourceVersion: "4034"
+  uid: 15cef121-6975-4be8-8ee1-cfd0111498a2
+controlplane:~$
+```
+
+## 💡 **One-Line Summary**
+
+> **ConfigMap = Non-secret config data**  
+> **Secret = Encoded sensitive data**  
+> **Mount or inject → App uses it → Restart if not auto-updated**
+
+
+
+**USING CONFIGMAP IN DIFFERENT WAYS**
+
+##### EXAMPLE 1:
+
+## 🧩 **Goal:**
+
+Use **ConfigMap** values **inside container commands or args** — for example, pass config paths or environment variables to your app
+
+## ⚙️ **Step-by-Step Example**
+
+1️⃣ Create a ConfigMap
+
+```powershell
+kubectl create configmap app-config --from-literal=CONFIG_PATH=/etc/config/config.yaml
+
+```
+
+✅ This creates:
+
+Key: CONFIG_PATH
+Value: /etc/config/config.yaml
+
+2️⃣ Use the ConfigMap in a Pod (in command or args)
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-demo
+spec:
+  containers:
+  - name: demo
+    image: busybox
+    command: ["sh", "-c"]
+    args: ["echo Config file path is: $(CONFIG_PATH)"]
+
+    env:
+    - name: CONFIG_PATH
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: CONFIG_PATH
+
+```
+
+### 🧩 **Explanation**
+
+- The `env:` section reads data from ConfigMap → stores it as an environment variable inside the container.
+
+- Then the container’s `args` uses that variable with `$(CONFIG_PATH)`.
+
+When the Pod runs, it executes:
+
+```shell
+echo Config file path is: /etc/config/config.yaml
+```
+
+### 🪄 **Easy-to-Remember Trick**
+
+> **ConfigMap → env variable → used in command or args.**  
+> “First define it, then use it!”
+
+
+
+
+
+#### **EXAMPLE 2:**
+
+EXAMPLE 1: **ConfigMap CAN BE USED AS ENVIRONMENT VARIABLE**
+Creating config map to demonstrates how you can have a user for the database where user is passed in as a config map as an env:
+
+FILE:
+
+```yaml
+cm1.yaml :
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bootcamp-configmap
+data:       # in configMap we specify key-value like this here in first like key is username and value is saiyam
+  username: "saiyam"
+  database_name: "exampledb"
+
+pod1.yaml :
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql-pod
+spec:
+  containers:
+  - name: mysql
+    image: mysql:5.7
+    env:
+      - name: MYSQL_USER # environment variable name used for mysql to specify user
+        valueFrom:
+          configMapKeyRef:
+            name: bootcamp-configmap #passing configMap name as reference where key i.e. username can be reffered from the configMap
+            key: username
+      - name: MYSQL_DATABASE  # environment variable name used for mysql to specify database name
+        valueFrom:
+          configMapKeyRef:
+            name: bootcamp-configmap #passing configMap name as reference where key i.e. db name can be reffered from the configMap
+            key: database_name
+      - name: MYSQL_PASSWORD
+        value: demo123  # Specify a strong password.
+      - name: MYSQL_ROOT_PASSWORD
+        value: demo345 # You should change this value.
+    ports:
+      - containerPort: 3306
+        name: mysql
+    volumeMounts:
+      - name: mysql-storage
+        mountPath: /var/lib/mysql
+  volumes:
+    - name: mysql-storage
+      emptyDir: {}
+```
+
+COMMANDS :
+
+```shell
+kubectl apply -f cm1.yaml
+kubectl apply -f pod1.yaml
+
+# this will give mysql terminal
+kubectl exec -it mysql-pod -- mysql -u root -p
+
+# we can check here that user defined in configMap is created
+SELECT user FROM mysql.user;
+
+#we can check here that database name defined in configMap is created
+SHOW DATABASES;
+```
+
+
+
+
+
+##### Example 2 : ConfigMap CAN BE USED AS MOUNTED VOLUME
+
+##### demonstrates a practical use case where the dev/prod properties can be defined and used for the application when required. In prod your application should be able to read config from the file located at /etc/config/settings.properties. This could mean parsing the file on startup or dynamically reading values when required.
+
+FILE :
+
+```yaml
+cm2.yaml:-
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-dev
+data:
+  settings.properties: |
+    # Development Configuration
+    debug=true
+    database_url=http://dev-db.example.com
+    featureX_enabled=false
 
 ---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-prod
+data:
+  settings.properties: |   # this seems settings.properties work like a file or create a file with name settings.properties
+    # Production Configuration
+    debug=false
+    database_url=http://prod-db.example.com
+    featureX_enabled=true
+
+pod2.yaml;-
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-web-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-web-app
+  template:
+    metadata:
+      labels:
+        app: my-web-app
+    spec:
+      containers:
+      - name: web-app-container
+        image: nginx
+        ports:
+        - containerPort: 80
+        env:
+        - name: ENVIRONMENT
+          value: "development"
+        volumeMounts:
+        - name: config-volume # this config name should be same as mentioned below in volumes
+          mountPath: /etc/config # this tells where to mount the configMap location with file name : etc/config/settings.properties
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config-dev  # this is referenced from configMap name
+
+
+```
+
+COMMAND :
+
+```shell
+kubectl aply -f cm2.yaml
+kubectl apply -f pod2.yaml
+
+# give us terminal of app now run ls inside to look into /etc/config to find settings.properties file and run cat command on file to # see all the defiend key-value pairs .
+kubectl exec -it <pod-name> -- bash
+
+kubectl exec -it <pod-name> -- cat /etc/config/settings.properties
+```
+
+
+
+
+
+##### Exmaple 3
+
+##### How can you make it run programatically
+
+## 🧩 **Goal**
+
+> ✅ Create a ConfigMap in Kubernetes  
+> ✅ Deploy a Pod that runs Python code  
+> ✅ Python code connects to Kubernetes API (from inside the cluster)  
+> ✅ Reads and prints ConfigMap data dynamically (no manual mounting)
+
+## 🧠 **Simple One-Liner Summary**
+
+> “We built a Python app that runs *inside Kubernetes*, uses the Kubernetes Python client, and reads ConfigMap data **programmatically** using Kubernetes API calls.”
+
+## ⚙️ **Step-by-Step Understanding**
+
+##### **1️⃣ Dockerfile — building our Python image**
+
+```dockerfile
+FROM python:3.8-slim
+RUN pip install kubernetes
+COPY read_config.py /read_config.py
+CMD ["python", "/read_config.py"]
+```
+
+🧠 Explanation:
+
+- Base image: `python:3.8-slim` (lightweight Python image)
+
+- Installs Kubernetes client library → allows Python to talk to K8s API
+
+- Copies our Python script inside container
+
+- Default command → runs the Python script when container starts
+
+2️⃣ ConfigMap — store simple key/value data
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: default
+data:
+  example.property: "Hello, world!"
+  another.property: "Just another example."
+
+```
+
+🧠 Explanation:
+
+- This ConfigMap stores configuration data our Python app will read.
+
+- Keys = properties, Values = text strings.
+
+3️⃣ Deployment — run the container
+
+```yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-reader-deployment
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-reader
+  template:
+    metadata:
+      labels:
+        app: config-reader
+    spec:
+      containers:
+      - name: config-reader
+        image: ttl.sh/hindi-boot:1h
+        imagePullPolicy: Always
+
+```
+
+🧠 Explanation:
+
+- Runs one replica of our Python container.
+
+- Uses the temporary image (`ttl.sh` automatically expires after 1 hour).
+
+- No volume mounts or env variables — app reads config using **Kubernetes API**.
+
+### **4️⃣ RBAC — give Pod permission to read ConfigMaps**
+
+#### Role:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: config-reader
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]atch"]
+
+```
+
+
+
+RoleBinding:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-configmaps
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: default 
+  namespace: default
+roleRef:
+  kind: Role
+  name: config-reader
+  apiGroup: rbac.authorization.k8s.iog-reader
+
+```
+
+🧠 Explanation:
+
+- Kubernetes **does not** let Pods read ConfigMaps programmatically unless they have permission.
+
+- Role → defines what can be accessed (`configmaps`)
+
+- RoleBinding → attaches that Role to the Pod’s default ServiceAccount.
+
+
+
+5️⃣ Python Script — read ConfigMap from API
+
+read_config.py:
+
+```python
+from kubernetes import client, config
+
+def main():
+    config.load_incluster_config()  # Use Pod's in-cluster credentials
+    v1 = client.CoreV1Api()
+    config_map = v1.read_namespaced_config_map('app-config', 'default')
+
+    print("ConfigMap data:")
+    for key, value in config_map.data.items():
+        print(f"{key}: {value}")
+
+if __name__ == '__main__':
+    main()
+
+```
+
+🧠 Explanation:
+
+- `load_incluster_config()` → auto-loads credentials from ServiceAccount inside the Pod.
+
+- Creates a CoreV1 API client → lets us talk to Kubernetes.
+
+- Reads ConfigMap “app-config” in namespace “default”.
+
+- Prints all key-value pairs to logs.
+
+app.yaml :
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: default
+data:
+  example.property: "Hello, world!"
+  another.property: "Just another example."
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-reader-deployment
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-reader
+  template:
+    metadata:
+      labels:
+        app: config-reader
+    spec:
+      containers:
+      - name: config-reader
+        image: ttl.sh/hindi-boot:1h
+        imagePullPolicy: Always
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: config-reader
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-configmaps
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: default 
+  namespace: default
+roleRef:
+  kind: Role
+  name: config-reader
+  apiGroup: rbac.authorization.k8s.io
+```
+
+
+
+🧰 **Commands**
+
+```shell
+# 1. Build and push Docker image
+docker build -t ttl.sh/hindi-boot:1h .
+docker push ttl.sh/hindi-boot:1h
+
+# 2. Apply Kubernetes YAML
+kubectl apply -f app.yaml
+
+# 3. View output (Pod logs)
+kubectl logs -l app=config-reader
+
+```
+
+🧠 Explanation:
+
+- `ttl.sh` gives a temporary image hosting for 1 hour.
+
+- Once Pod runs, it prints ConfigMap contents inside logs.
+
+
+
+## 🪄 **Easy-to-Remember Summary**
+
+| Step | Action                       | Purpose                                |
+| ---- | ---------------------------- | -------------------------------------- |
+| 1️⃣  | Build Python image           | Script to talk to K8s API              |
+| 2️⃣  | Create ConfigMap             | Store key/value data                   |
+| 3️⃣  | Create Deployment            | Run container in cluster               |
+| 4️⃣  | Add RBAC Role/Binding        | Grant Pod permission to read ConfigMap |
+| 5️⃣  | Pod reads via Kubernetes API | Prints data dynamically                |
+
+## 🧩 **Key Takeaways**
+
+- This approach = **programmatic ConfigMap access** (not via file or env).
+
+- Useful when:
+  
+  - You want **dynamic runtime updates**
+  
+  - Or app wants to **watch** for ConfigMap changes.
+
+- Needs RBAC permissions (`get`, `list`, `watch`).
+
+
+
+## 🎯 **In Short (Easy Line to Remember)**
+
+> “We used a Python Pod that talks directly to Kubernetes API to read ConfigMap data dynamically — not via mounting or env, but using service account + RBAC + in-cluster credentials.”
+
+
+
+---
+
+## 🔐 **What Are Kubernetes Secrets?**
+
+✅ **Secrets** are used to store **sensitive data** — like passwords, tokens, API keys, certificates — so we don’t hardcode them inside apps or code.
+
+⚠️ **Important:** By default, secrets are **Base64-encoded**, not encrypted.  
+That means — they’re slightly hidden, but not secure enough for production.
+
+
+
+## 🧠 **Why We Need External Secret Solutions**
+
+> Kubernetes Secrets alone are **not secure enough**.  
+> So we use external tools like:
+> 
+> - **Secrets Store CSI Driver**
+> 
+> - **Sealed Secrets**
+> 
+> - **External Secrets Operator**
+
+These tools integrate with external vaults or encrypt secrets safely.
+
+
+
+## 🚀 **1️⃣ Secrets Store CSI Driver**
+
+### 🔹 **Simple Explanation:**
+
+> CSI (Container Storage Interface) Driver mounts secrets **directly from external secret stores (Vault, AWS, Azure, GCP, etc.)** into your Pod as a volume.
+
+### 🧩 **How It Works:**
+
+- CSI driver uses **gRPC** to talk to secret providers (AWS, Vault, etc.).
+
+- Secrets are mounted as **temporary files** inside Pods.
+
+- You can also **sync** them into native Kubernetes Secrets if needed.
+
+### 🌍 **Supported Providers:**
+
+- AWS Secrets Manager
+
+- Azure Key Vault
+
+- GCP Secret Manager
+
+- HashiCorp Vault
+
+- Akeyless, IBM, and others
+
+### 🧠 **Easy Example:**
+
+Imagine you store DB password in **AWS Secrets Manager**.  
+The CSI driver mounts that password file into `/mnt/secrets/db-password` inside your Pod.  
+No manual secret creation or hardcoding needed.
+
+🪄 **In short:**
+
+> “CSI Driver fetches secrets directly from external vaults and mounts them securely in Pods.”
+
+
+
+
+
+## 🔑 **2️⃣ Sealed Secrets**
+
+### 🔹 **Simple Explanation:**
+
+> Sealed Secrets encrypt your secrets so you can **store them safely in Git (for GitOps)**.
+
+### 🧩 **How It Works:**
+
+- You install a **Sealed Secrets controller** in your cluster.
+
+- You encrypt your secret locally using a **kubeseal** CLI tool.
+
+- The sealed secret file (safe to commit) goes into Git.
+
+- When applied, the controller decrypts it inside the cluster.
+
+### 🧠 **Easy Example:**
+
+1. Create a normal secret → `kubectl create secret generic mysecret --from-literal=password=abc123`
+
+2. Seal it → `kubeseal --format yaml < mysecret.yaml > sealedsecret.yaml`
+
+3. Commit `sealedsecret.yaml` to Git safely.
+
+4. When you `kubectl apply -f sealedsecret.yaml`, controller decrypts and creates the real secret.
+
+🪄 **In short:**
+
+> “Sealed Secrets = Encrypt once, commit safely, decrypt only inside the cluster.”
+
+
+
+## 🔐 Why `mysecret.yaml` Is Not Secure (But Sealed Secrets *Are*)
+
+### ❌ `mysecret.yaml` is **not secure**
+
+- It contains **plaintext or base64-encoded secrets**, which are easily decoded.
+
+- If stored in Git or shared accidentally, it exposes sensitive data.
+
+- Even base64 encoding is **not encryption** — it's just a reversible transformation.
+
+### ✅ `sealedsecret.yaml` **is secure**
+
+- Once you run `kubeseal`, the output is **encrypted using the Sealed Secrets controller's public key**.
+
+- Only the controller inside your Kubernetes cluster can decrypt it using its **private key**.
+
+- You can safely commit `sealedsecret.yaml` to Git — it's **useless outside your cluster**.
+
+
+
+## 🛡️ Best Practices for Security
+
+| Practice                                                    | Why It Matters                               |
+| ----------------------------------------------------------- | -------------------------------------------- |
+| 🔒 Delete `mysecret.yaml` after sealing                     | Prevent accidental leaks or Git commits      |
+| 🧪 Use `kubectl create secret ... --dry-run=client -o yaml` | Avoid manually writing secrets               |
+| 🗃️ Use `.gitignore` or pre-commit hooks                    | Block unsealed secrets from being committed  |
+| 🔍 Audit your repo for secrets                              | Use tools like `git-secrets` or `truffleHog` |
+
+
+
+
+
+### ✅ Install `kubeseal` (Linux x86_64) in Killercoda
+
+1. **Download the latest release archive**
+   
+   ```bash
+   curl -LO https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.22.0/kubeseal-0.22.0-linux-amd64.tar.gz
+   ```
+
+2. **Extract the archive**
+   
+   ```bash
+   tar -xvzf kubeseal-0.22.0-linux-amd64.tar.gz
+   ```
+
+3. **Move the binary to your system path**
+   
+   ```bash
+   chmod +x kubeseal
+   sudo mv kubeseal /usr/local/bin/
+   ```
+
+4. **Verify installation**
+   
+   ```bash
+   kubeseal --version
+   ```
+
+
+
+### 🧩 Step-by-step fix: Install the Sealed Secrets controller
+
+You can install it using Helm or a direct manifest. Here's both options:
+
+#### ✅ Option 1: Install via Helm (recommended)
+
+```bash
+helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
+helm repo update
+helm install sealed-secrets sealed-secrets/sealed-secrets \  --namespace sealed-secrets --create-namespace
+```
+
+This will:
+
+- Create the `sealed-secrets` namespace
+
+- Deploy the controller with the default name `sealed-secrets-controller`
+
+#### ✅ Option 2: Install via kubectl (YAML manifest)
+
+```bash
+kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.24.0/controller.yaml
+```
+
+### 🔍 Verify installation
+
+After installation, confirm the controller is running:
+
+```bash
+kubectl get pods -n sealed-secrets
+kubectl get svc -n sealed-secrets
+```
+
+You should see a pod and service named `sealed-secrets-controller`.
+
+
+
+### 🔐 Then retry your sealing command
+
+```bash
+kubeseal \  --controller-name=sealed-secrets-controller \  --controller-namespace=sealed-secrets \  --format=yaml < mysecret.yaml > sealedsecret.yaml
+```
+
+
+
+
+
+## 🔐 Sealed Secrets Workflow Cheat Sheet
+
+| Step                    | Command                                                                                                                             | Purpose                                            |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 1️⃣ Create Secret       | `vi mysecret.yaml`                                                                                                                  | Define your Kubernetes Secret in YAML format       |
+| 2️⃣ Seal the Secret     | `kubeseal --controller-name=sealed-secrets --controller-namespace=sealed-secrets --format=yaml < mysecret.yaml > sealedsecret.yaml` | Encrypt the Secret using Sealed Secrets controller |
+| 3️⃣ Apply Sealed Secret | `kubectl apply -f sealedsecret.yaml`                                                                                                | Deploy the sealed secret to your cluster           |
+
+
+
+COMMANDS :
+
+
+```bash
+Initialising Kubernetes... done
+
+controlplane:~$ curl -LO https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.22.0/kubeseal-0.22.0-linux-amd64.tar.gz
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 19.5M  100 19.5M    0     0  2915k      0  0:00:06  0:00:06 --:--:-- 3657k
+controlplane:~$ tar -xvzf kubeseal-0.22.0-linux-amd64.tar.gz
+LICENSE
+README.md
+kubeseal
+controlplane:~$ chmod +x kubeseal
+controlplane:~$ sudo mv kubeseal /usr/local/bin/
+controlplane:~$ kubeseal --version
+kubeseal version: 0.22.0
+controlplane:~$ 
+
+
+controlplane:~$ kubectl get svc -A | grep sealed
+controlplane:~$ helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
+"sealed-secrets" has been added to your repositories
+controlplane:~$ helm repo update
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "sealed-secrets" chart repository
+Update Complete. ⎈Happy Helming!⎈
+controlplane:~$ helm install sealed-secrets sealed-secrets/sealed-secrets \
+  --namespace sealed-secrets --create-namespace
+NAME: sealed-secrets
+LAST DEPLOYED: Wed Nov  5 10:09:05 2025
+NAMESPACE: sealed-secrets
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+** Please be patient while the chart is being deployed **
+
+You should now be able to create sealed secrets.
+
+1. Install the client-side tool (kubeseal) as explained in the docs below:
+
+    https://github.com/bitnami-labs/sealed-secrets#installation-from-source
+
+2. Create a sealed secret file running the command below:
+
+    kubectl create secret generic secret-name --dry-run=client --from-literal=foo=bar -o [json|yaml] | \
+    kubeseal \
+      --controller-name=sealed-secrets \
+      --controller-namespace=sealed-secrets \
+      --format yaml > mysealedsecret.[json|yaml]
+
+The file mysealedsecret.[json|yaml] is a commitable file.
+
+If you would rather not need access to the cluster to generate the sealed secret you can run:
+
+    kubeseal \
+      --controller-name=sealed-secrets \
+      --controller-namespace=sealed-secrets \
+      --fetch-cert > mycert.pem
+
+to retrieve the public cert used for encryption and store it locally. You can then run 'kubeseal --cert mycert.pem' instead to use the local cert e.g.
+
+    kubectl create secret generic secret-name --dry-run=client --from-literal=foo=bar -o [json|yaml] | \
+    kubeseal \
+      --controller-name=sealed-secrets \
+      --controller-namespace=sealed-secrets \
+      --format [json|yaml] --cert mycert.pem > mysealedsecret.[json|yaml]
+
+3. Apply the sealed secret
+
+    kubectl create -f mysealedsecret.[json|yaml]
+
+Running 'kubectl get secret secret-name -o [json|yaml]' will show the decrypted secret that was generated from the sealed secret.
+
+Both the SealedSecret and generated Secret must have the same name and namespace.
+
+
+
+
+✅ Step 3: Verify the controller is running
+kubectl get svc -n sealed-secrets
+controlplane:~$ kubectl get svc -n sealed-secrets
+NAME                     TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+sealed-secrets           ClusterIP   10.106.140.196   <none>        8080/TCP   69s
+sealed-secrets-metrics   ClusterIP   10.111.234.142   <none>        8081/TCP   69s
+controlplane:~$ 
+
+
+
+controlplane:~$ kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.24.0/controller.yaml
+deployment.apps/sealed-secrets-controller created
+role.rbac.authorization.k8s.io/sealed-secrets-service-proxier created
+rolebinding.rbac.authorization.k8s.io/sealed-secrets-controller created
+clusterrolebinding.rbac.authorization.k8s.io/sealed-secrets-controller created
+role.rbac.authorization.k8s.io/sealed-secrets-key-admin created
+Warning: resource clusterroles/secrets-unsealer is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+clusterrole.rbac.authorization.k8s.io/secrets-unsealer configured
+serviceaccount/sealed-secrets-controller created
+Warning: resource customresourcedefinitions/sealedsecrets.bitnami.com is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+customresourcedefinition.apiextensions.k8s.io/sealedsecrets.bitnami.com configured
+service/sealed-secrets-controller created
+rolebinding.rbac.authorization.k8s.io/sealed-secrets-service-proxier created
+controlplane:~$ kubectl get svc -n sealed-secrets
+NAME                     TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+sealed-secrets           ClusterIP   10.106.140.196   <none>        8080/TCP   2m25s
+sealed-secrets-metrics   ClusterIP   10.111.234.142   <none>        8081/TCP   2m25s
+controlplane:~$ kubectl get svc -n sealed-secrets
+NAME                     TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+sealed-secrets           ClusterIP   10.106.140.196   <none>        8080/TCP   2m56s
+sealed-secrets-metrics   ClusterIP   10.111.234.142   <none>        8081/TCP   2m56s
+controlplane:~$ 
+
+
+
+🔐 Step 4: Seal your secret with correct flags
+Once confirmed, run:
+
+bash
+kubeseal \
+  --controller-name=sealed-secrets-controller \
+  --controller-namespace=sealed-secrets \
+  --format=yaml < mysecret.yaml > sealedsecret.yaml
+Let me know if you'd like help verifying the install or customizing the controller setup.
+
+
+
+vi mysecret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+  namespace: default
+type: Opaque
+data:
+  username: bXl1c2Vy # base64 encoded
+  password: bXlwYXNzd29yZA== # base64 encoded
+
+  
+controlplane:~$ kubeseal \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  --format=yaml < mysecret.yaml > sealedsecret.yaml
+bash: mysecret.yaml: No such file or directory
+controlplane:~$ vi mysecret.yaml
+controlplane:~$ kubeseal   --controller-name=sealed-secrets   --controller-namespace=sealed-secrets   --format=yaml < mysecret.yaml > sealedsecret.yaml
+controlplane:~$ kubeseal --format yaml < mysecret.yaml > sealedsecret.yaml
+controlplane:~$ kubectl apply -f sealedsecret.yaml
+sealedsecret.bitnami.com/mysecret created
+controlplane:~$ 
+
+
+controlplane:~$ ls
+LICENSE  README.md  filesystem  kubeseal-0.22.0-linux-amd64.tar.gz  mysecret.yaml  sealedsecret.yaml
+controlplane:~$ cat sealedsecret.yaml 
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: mysecret
+  namespace: default
+spec:
+  encryptedData:
+    password: AgCol3L+KLzjr+jJFv4blwVOIj74+iZxCiXWfTSwbLrSatUMkV1G2r3odNgJepv4LWWj0VeCwhicP+Kmz/fhK8a+0q8i6JecMJzGS9sD4EHZexHwAPCMY+9I4X1NgaUyjsmYM5x4FVwzn6gUxuCfTNNjjEkj2hNJ0New+adxO+kUBC+v6NQE4fg+6D+r7tqZpnS+LCcnU0Nq2bpWeHIWTUB1XQCaLxbknzyoMtAoO1zadTN1DXeTklnn2opuO/Op+27TpfQ627Z9OZFvvZRXxu+UrGCvwN0aLg4TK8oISoNN9afUaDcedglEqgHF43kVn4e3zIVn/jsqNlo+1aW/oFEEFOPdVodpXlxj0GV1d3NJm/18HZflQQm5WdU9Zc9BKxxSH5PjWinAf38TuNJxgRZFvctMoGgk9jTLx3CEZh9oJOcn8R0niprzUNfagIYtNdfC+o2T3FonawU9FpdePpiU3GCuMf15hvK5R/zzofA/VDKnmx84+CA69rC9ruQfy/fmzrCyscOhgfQjGCS6r/bByTYm3x3/qBcxWkE/W3FjmB6GMk6vIHXx/9Wr826KzeXwLibS6q4ZIlFqtJtvwA6XafMaS8JhfdNZzvod4TU7EK01BDwcmtX3FkNrev2+7yEAkVbkKa55bwFlnQQmVkxIU8RhYwD6m8rMFow3akLuclZBsHJTYi0JHELhtUxkWLTdYDRsYhOLlg0D
+    username: AgBKUCCkWdL5EPQNWU+q2KKNPJSjnvFmpohhPbwIhz+06j2FojJrpvJ2v+axoYWCW0359Qeq0LKeFbAKj9madBO+cbwznbfynxzfkkju//kvBXfENY9UjuAxTpURiSrguwr5fD6kvoFxXtaXLQhFFz1RIlUrxD1nMm0xagRmFunUdz8arfWn+BiNJEAzSDQRgMQ26e//lzab/YAZ15GrVLdwhAGA6Fdt9LbCS2tVkfzwO6tJjN6jhYW56Y64wO333scid5iu+gmLysjCsQvRGGkuRfvUcniqc4BCl4nlpHpErbMDIoT/fCdKvqmo9dJTBqDLthb4ZVDvE9LF1tptnAbOS3p2YH8XZGLqu9QhixZbAmKOar3H5lRiYN10uQ27c+VXFebJmezH+BzAjdkc/xnGd2YR71Nqjvw9SDPwSyVHkS7Xi9kek9Il8YCziym6I70u8tX7KXfrwQDljycxUwmGuLTNw2kL1mwRDPMIhYGj5U2ke1hKsURTnkoT3kLwqpCerwVTZfHwvZsBYyCDlejoemfoWqeFSd6ueNBBwCwMWHIEhHa3trsC8V+v473/ZN/8gOrSSDImnjVhnDwCjzuL+Ehpq3uWQqOUJgV93TRIINzOjCsZkfm6KY83cg7B1dwGTxFTg5ffv0uICYUwILpTLK7WFN635VW5W3dKc+5WxWykh96LYusvt7ST8Ap/K8houSJYdAQ=
+  template:
+    metadata:
+      creationTimestamp: null
+      name: mysecret
+      namespace: default
+    type: Opaque
+
+controlplane:~$
+
+
+
+```
+
+
+
+
+
+## 🌐 **3️⃣ External Secrets Operator (ESO)**
+
+### 🔹 **Simple Explanation:**
+
+> External Secrets Operator **syncs** secrets automatically from external secret managers into Kubernetes Secrets.
+
+### 🧩 **How It Works:**
+
+- You define an `ExternalSecret` resource in YAML.
+
+- ESO connects to your external provider (Vault, AWS, GCP, etc.).
+
+- It automatically creates/updates the corresponding Kubernetes Secret.
+
+### 🧠 **Easy Example:**
+
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-secret
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-store
+    kind: SecretStore
+  target:
+    name: db-secret
+  data:
+    - secretKey: password
+      remoteRef:
+        key: my-database-password
+
+```
+
+🪄 **In short:**
+
+> “ESO automatically keeps Kubernetes Secrets synced from AWS, Vault, etc. — no manual creation needed.”
+
+
+
+## 🧱 **Types of Kubernetes Secrets (Built-In)**
+
+| Type                                  | Purpose / Use Case                                                                  |
+| ------------------------------------- | ----------------------------------------------------------------------------------- |
+| `Opaque`                              | Default type, for custom user-defined key-value data                                |
+| `kubernetes.io/service-account-token` | Auto-generated token for ServiceAccounts                                            |
+| `kubernetes.io/dockercfg`             | For Docker `~/.dockercfg` file (legacy)                                             |
+| `kubernetes.io/dockerconfigjson`      | For Docker `~/.docker/config.json` file (used when pulling from private registries) |
+| `kubernetes.io/basic-auth`            | Username/password authentication                                                    |
+| `kubernetes.io/ssh-auth`              | SSH private key for secure connections                                              |
+| `kubernetes.io/tls`                   | Store TLS cert and key for HTTPS                                                    |
+| `bootstrap.kubernetes.io/token`       | Internal token used by Kubernetes for node bootstrapping                            |
+
+
+
+🧠 **Most Commonly Used Types:**
+
+- `Opaque` → for app credentials
+
+- `dockerconfigjson` → for private image pull secrets
+
+- `tls` → for HTTPS certs
+
+- `service-account-token` → for Pod authentication
+
+
+
+## 🪄 **Easy-to-Remember Summary Table**
+
+| Mechanism                     | Purpose                                     | How It Works                               | Best Use Case                         |
+| ----------------------------- | ------------------------------------------- | ------------------------------------------ | ------------------------------------- |
+| **Secrets Store CSI Driver**  | Fetch secrets directly from external stores | Mounts secrets as volumes                  | Secure runtime fetch from Vaults      |
+| **Sealed Secrets**            | Encrypt secrets for GitOps                  | Encrypt → Commit → Decrypt inside cluster  | GitOps environments                   |
+| **External Secrets Operator** | Sync secrets automatically from vaults      | Creates/updates K8s Secrets from providers | Continuous sync with AWS, Vault, etc. |
+
+## 🧠 **Simple Memory Line**
+
+> “K8s Secrets are base64, not secure → use CSI Driver (runtime fetch), Sealed Secrets (Git-safe), or External Secrets Operator (auto-sync).”
+
+
+
+when we have to pull docker image from private registry then use kubernetes.io/dockercfg or kubernetes.io/dockerconfigjson
+
+majorly we use kubernetes.io/dockercfg or kubernetes.io/dockerconfigjson or Opaque(default) or kubernetes.io/tls
+
+kubernetes.io/service-account-token  this is used when we need token . kubectl create token.
+
+
+
+
+
+---
+
+### 🔐 What are Kubernetes Secrets?
+
+- **Secrets** store **sensitive data** such as passwords, tokens, SSH keys, TLS certs, and credentials.
+
+- They are **base64-encoded**, **not encrypted** by default (only encoded for transport).
+
+- Better to use **external secret managers** like **Sealed Secrets**, **Secret Store CSI Driver**, or **External Secrets Operator** for real security.
+
+- Use `kubectl create secret` or YAML manifest to define them.
+
+
+
+## ⚙️ **Creating Secrets**
+
+### 1️⃣ **Opaque Secret (Default Type)**
+
+Used for arbitrary data like passwords or API keys.
+
+**Command:**
+
+```shell
+# imperative way
+kubectl create secret generic my-opaque-secret --from-literal=password=supersecret
+```
+
+Check it:
+
+`kubectl get secrets
+kubectl get secret my-opaque-secret -o yaml`
+
+
+
+Decode Base64:
+
+```bash
+echo "c3VwZXJzZWNyZXQ=" | base64 -d
+# Output: supersecret
+
+```
+
+🧩 *Kubernetes encodes data using base64; we can decode it easily.*
+
+
+
+```shell
+controlplane:~$ kubectl create secret generic my-opaque-secret --from-literal=password=supersecret
+secret/my-opaque-secret created
+controlplane:~$ kubectl get secrets
+NAME               TYPE     DATA   AGE
+my-opaque-secret   Opaque   1      22s
+controlplane:~$ kubectl get secrets my-opaque-secret -oyaml
+apiVersion: v1
+data:
+  password: c3VwZXJzZWNyZXQ=
+kind: Secret
+metadata:
+  creationTimestamp: "2025-10-18T14:01:17Z"
+  name: my-opaque-secret
+  namespace: default
+  resourceVersion: "3715"
+  uid: 2d7791d9-9087-4813-8e36-39876ae92a8c
+type: Opaque
+controlplane:~$ echo "c3VwZXJzZWNyZXQ=" | -d base64
+-d: command not found
+controlplane:~$ echo "c3VwZXJzZWNyZXQ=" |  base64 -d 
+supersecret
+controlplane:~$ echo "supersecret" | base64
+c3VwZXJzZWNyZXQ=
+```
+
+
+
+FILE: 
+
+2️⃣ **YAML-based Secret**
+
+sec.yaml :
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-opaque-secret
+type: Opaque
+data:
+  password: c3VwZXJzZWNyZXQ=   # base64 of 'supersecret'
+
+```
+
+**Apply it:**
+
+`kubectl apply -f sec.yaml`
+
+⚠️ *Do not commit this YAML file to GitHub — it still exposes encoded (not encrypted) secrets.*
+
+
+
+### 3️⃣ **Basic Auth Secret**
+
+Used for username/password authentication.
+
+```bash
+kubectl create secret generic my-basic-auth-secret \
+--from-literal=username=myuser \
+--from-literal=password=mypassword \
+--type=kubernetes.io/basic-auth
+
+```
+
+📌 *Either `username` or `password` (or both) must be provided.*
+
+
+
+### 4️⃣ **SSH Auth Secret**
+
+Used for storing private SSH keys.
+
+```bash
+ssh-keygen
+kubectl create secret generic my-ssh-key-secret \
+--from-file=ssh-privatekey=/root/.ssh/id_ed25519 \
+--type=kubernetes.io/ssh-auth
+
+```
+
+COMMAND:
+
+```bash
+# if we want to create ssh-key secret
+kubectl create secret generic my-ssh-key-secret \
+--from-file=ssh-privatekey=/path/to/.ssh/id_rsa \
+--type=kubernetes.io/ssh-auth
+
+controlplane:~$ ssh-keygen
+Generating public/private ed25519 key pair.
+Enter file in which to save the key (/root/.ssh/id_ed25519):
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /root/.ssh/id_ed25519
+Your public key has been saved in /root/.ssh/id_ed25519.pub
+The key fingerprint is:
+SHA256:mDR9L4+3sK0wARZHEceUZ42HRyu+GnjHidlQZWIQ9Og root@controlplane
+The key's randomart image is:
++--[ED25519 256]--+
+|      ..=**+o=+  |
+|       + .o+=++. |
+|      = . oo+o.  |
+|     o = o + .   |
+|      o S E o    |
+|         o X o   |
+|        + B O    |
+|         + O .   |
+|          +.o    |
++----[SHA256]-----+
+controlplane:~$ kubectl create secret generic my-ssh-key-secret --from-file=ssh-privatekey=/root/.ssh/id_ed25519 --type=kubernetes.io/ssh-auth
+secret/my-ssh-key-secret created
+
+controlplane:~$ kubectl get secret my-ssh-key-secret -oyaml
+apiVersion: v1
+data:
+  ssh-privatekey: LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQkc1dmJtVUFBQUFFYm05dVpRQUFBQUFBQUFBQkFBQUFNd0FBQUF0emMyZ3RaVwpReU5UVXhPUUFBQUNBNCtkaWhHaVFYS0U2blpvRW9UaXJLNTdnYkhDdXkvRXJPZmZhRmxQeGtVUUFBQUpqSW01eVN5SnVjCmtnQUFBQXR6YzJndFpXUXlOVFV4T1FBQUFDQTQrZGloR2lRWEtFNm5ab0VvVGlySzU3Z2JIQ3V5L0VyT2ZmYUZsUHhrVVEKQUFBRURBaHBvajZSVUs0TnFMYS9iRGhEOVYrMCt1ckJuSGdjMTkyc2RQRGxsekp6ajUyS0VhSkJjb1RxZG1nU2hPS3Nybgp1QnNjSzdMOFNzNTk5b1dVL0dSUkFBQUFFWEp2YjNSQVkyOXVkSEp2YkhCc1lXNWxBUUlEQkE9PQotLS0tLUVORCBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0K
+kind: Secret
+metadata:
+  creationTimestamp: "2025-10-18T14:32:52Z"
+  name: my-ssh-key-secret
+  namespace: default
+  resourceVersion: "4453"
+  uid: 3c3c911d-7120-4ba5-85f9-a7e5f86715da
+type: kubernetes.io/ssh-auth
+```
+
+
+
+### 5️⃣ **TLS Secret**
+
+Used for certificates (HTTPS).
+
+```bash
+# tls secret key : here we need cert file
+kubectl create secret tls my-tls-secret \
+--cert=/path/to/cert/file \
+--key=/path/to/key/file
+
+```
+
+🔑 *Used by Ingress or apps needing TLS communication.*
+
+
+
+```bash
+kubectl delete deploy --all
+
+kubectl delete cm --all
+
+kubectl delete pods --all
+
+```
+
+
+
+COMMANDS:
+
+```bash
+# secret name mysql-root-pass we use it in pod3.yaml with refering
+kubectl create secret generic mysql-root-pass --from-literal=password='abc123'
+
+# secret name mysql-user-pass we use it in pod3.yaml with refering
+kubectl create secret generic mysql-user-pass --from-literal=password='saiyampass'
+
+kubectl get secrets
+
+cat pod3.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef: # referencing from secret i.e. name mysql-root-pass for key value i.e. password
+                name: mysql-root-pass
+                key: password
+          - name: MYSQL_USER
+            valueFrom:
+              configMapKeyRef:  # referencing from configMap i.e. name bootcamp-configmap for key value i.e. username
+                name: bootcamp-configmap
+                key: username
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:     # referencing from secret i.e. name mysql-user-pass for key value i.e. password
+                name: mysql-user-pass
+                key: password
+          - name: MYSQL_DATABASE
+            valueFrom:
+              configMapKeyRef:  # referencing from configMap i.e. name bootcamp-configmap for key value i.e. database_name
+                name: bootcamp-configmap
+                key: database_name
+        ports:
+          - containerPort: 3306
+        volumeMounts:
+          - name: mysql-storage
+            mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          emptyDir: {}
+
+
+cat cm1.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bootcamp-configmap
+data:
+  username: "saiyam"
+  database_name: "exampledb"
+
+kubectl apply -f cm1.yaml
+
+kubectl apply -f pod3.yaml
+
+kubectl get pods
+
+# gives mysql terminal then gives password
+kubectl exec -it <pod-name> -- mysql -u root -pabc123
+```
+
+
+
+
+
+
+
+## ⚡ **Useful Commands Recap**
+
+| Command                                     | Purpose                  |
+| ------------------------------------------- | ------------------------ |
+| `kubectl create secret generic ...`         | Create generic secret    |
+| `kubectl create secret tls ...`             | Create TLS secret        |
+| `kubectl create secret docker-registry ...` | Create image pull secret |
+| `kubectl get secrets`                       | List all secrets         |
+| `kubectl get secret <name> -o yaml`         | Show secret in YAML      |
+| `echo "..."                                 | base64 -d`               |
+| `kubectl apply -f <file>`                   | Apply YAML               |
+| `kubectl delete secret <name>`              | Delete a secret          |
+
+
+
+## 🧰 **Types of Secrets (with Usage)**
+
+| Type                                           | Use                                    |
+| ---------------------------------------------- | -------------------------------------- |
+| `Opaque`                                       | Default, arbitrary key-value data      |
+| `kubernetes.io/service-account-token`          | Auto-generated SA tokens               |
+| `kubernetes.io/dockercfg` / `dockerconfigjson` | For Docker registry login              |
+| `kubernetes.io/basic-auth`                     | Username-password pair                 |
+| `kubernetes.io/ssh-auth`                       | SSH private key                        |
+| `kubernetes.io/tls`                            | TLS certs & keys                       |
+| `bootstrap.kubernetes.io/token`                | Internal use for cluster bootstrapping |
+
+🧠 *Most commonly used:*  
+`Opaque`, `dockerconfigjson`, `basic-auth`, `ssh-auth`, and `tls`
+
+
+
+## 🔒 **Better Security Options**
+
+| Mechanism                     | What it does                                                                                | Why use it                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------- |
+| **Secret Store CSI Driver**   | Fetches secrets directly from external vaults (AWS, Azure, GCP, HashiCorp Vault) using gRPC | No secrets stored in Kubernetes |
+| **Sealed Secrets**            | Encrypts secrets → safe to store in Git → decrypted only in cluster                         | GitOps-safe                     |
+| **External Secrets Operator** | Syncs external secrets (from AWS, Vault, etc.) into Kubernetes Secrets automatically        | Automates secret management     |
+
+🧩 *All these methods prevent storing raw secrets inside YAML or Git.*
+
+
+
+## 🧠 **Easy-to-Remember Summary**
+
+1. **Secrets = Sensitive data (passwords, tokens, keys).**
+
+2. **Always base64-encoded**, not encrypted → use sealed/external secrets for safety.
+
+3. **Create secrets** using CLI or YAML (base64 required in YAML).
+
+4. **Reference secrets** inside pods with `secretKeyRef`.
+
+5. **For private Docker images**, use `docker-registry` type secret.
+
+6. **Use ConfigMap** for non-sensitive data (e.g., usernames, app settings).
+
+
+
+---
+
+
 
 ### Image pull secrets
 
@@ -6133,7 +7669,13 @@ spec:
 
 ---
 
-**<mark>STATEFULSETS, SERVICE, INGRESS</mark>**
+---
+
+---
+
+
+
+##### PART 8 **<mark>STATEFULSETS, SERVICE, INGRESS</mark>**
 
 ## 🧠 What Does “Flat Network” Mean in Kubernetes?
 
@@ -6515,10 +8057,6 @@ Finds the host-side veth pair (`caliede2c6f02d9@if3`) linked to the Pod’s netw
 | `ip netns list` shows CNI namespaces          | ✅       | Created by plugins like Calico.                               |
 | `lsns -p <PID>` shows container namespaces    | ✅       | Confirms shared or isolated namespaces.                       |
 
-
-
-
-
 -----
 
 ### 🧠 What Is a Pause Container?
@@ -6555,17 +8093,9 @@ In Kubernetes, **every Pod** (except for some very specific cases) includes a **
 
 - 🔗 `containerd` then launches the container inside that **pre-configured network namespace**, linking it to the node.
 
-
-
-
-
 **🚦 Intra-Node Pod Communication**
 
-
-
 ![inter node pod communication.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\inter%20node%20pod%20communication.png)
-
-
 
 FLOW OF INTRA-NODE POD COMMUNICATION :
 
@@ -6580,8 +8110,6 @@ FLOW OF INTRA-NODE POD COMMUNICATION :
 - Each Pod connects to the node via a **veth pair**: `eth0` in Pod ↔ `vethX` in node.
 
 - The node uses a **bridge** (e.g., `br1234`) to connect all Pod interfaces.
-
-
 
 ### 🔄 Traffic Flow: Pod A → Pod B (Same Node)
 
@@ -6600,27 +8128,15 @@ FLOW OF INTRA-NODE POD COMMUNICATION :
 5. **Packet enters Pod B via** `eth0` 
    → Pod B receives the traffic as if it came from a regular network.
 
-
-
-
-
 **🌐 Inter-Node Pod Communication : Node-Node Communication**
 
 ![node to node communication.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\node%20to%20node%20communication.png)
 
-
-
 **DEFAULT GATEWAY :**
-
-
 
 ![default gateway.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\default%20gateway.png)
 
-
-
 **Node to Node Communication flow :**
-
-
 
 ![node to node communication.png flow.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\node%20to%20node%20communication.png%20flow.png)
 
@@ -6633,8 +8149,6 @@ FLOW OF INTRA-NODE POD COMMUNICATION :
 - Pods connect to the node via **veth pairs** and a **bridge**.
 
 - Nodes communicate over physical interfaces like `eth0`.
-
-
 
 ### 🔄 Traffic Flow: Pod A (Node 1) → Pod B (Node 2)
 
