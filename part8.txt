@@ -979,6 +979,7 @@ kind: Service
 metadata:
   name: nginx2
   annotations:
+    # # ExternalDNS AUTOMATICALLY READS THIS "my-app2.saiyampathak.com"
     external-dns.alpha.kubernetes.io/hostname: my-app2.saiyampathak.com
 spec:
   selector:
@@ -1053,6 +1054,10 @@ spec:
           value: ""
 
 
+we created ServiceAccount name external-dns then we created ClusterRole with get, watch, list our ingress or nodes or services then we do ClusterRoleBinding then we created Pod via Deployment in there --provider field there every provider has to provide its Implementation and every provider has their own authentication mechanism and in env we can see name like CIVO_TOKEN with value and in here we have to provide args in Deployment with --source that we want to watch BASICALLY IT ACTS AS SYNC BETWEEN OUR CLOUD DNS AND RESOURCES THAT WE CREATE
+
+
+CHECK THE ABOVE STATEMENTS GIVEN AND CORRECT THEM AND AND GIVE ME ONE OR TWO OR FEW LINER STATEMENT EXPLAINATATION EASY TO UNDERSTAND AND REMEMBER AND EXPLAIN ALL THE ABOVE PROCESS AND THE COMMANDS IN SIMPLE EASY TO REMEMBER AND UNDERSTAND AND PREPARE NOTES OF IT FOR ME.
 
 
 
