@@ -8945,6 +8945,8 @@ def main():
 if __name__ == "__main__":
     main()
 
+
+
 controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$cat apppod.yaml
     apiVersion: v1
 kind: Pod
@@ -8966,6 +8968,8 @@ spec:
         value: "example"
       - name: DATABASE_NAME
         value: "postgres"
+
+
 
 controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$ cat db.yaml
 apiVersion: apps/v1
@@ -8991,6 +8995,10 @@ spec:
             value: "example"
         ports:
         - containerPort: 5432
+
+
+
+
 controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$ cat db_svc.yaml
 apiVersion: v1
 kind: Service
@@ -9005,6 +9013,8 @@ spec:
     port: 5432
     targetPort: 5432
 controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$
+
+
 
 controlplane:~/Kubernetes-hindi-bootcamp/part8/ExternalName$cat externam-db_svc.yaml
 apiVersion: v1
@@ -9317,7 +9327,7 @@ That’s why **path-based routing** is only possible through **Ingress**.
 | Benefit          | Host & Path-based routing, SSL termination            |
 | Best Use         | Production environments with multiple services        |
 
-# EXPLAIN WHY CHATGPT WITH EXAMPLE EASY TO UNDERSTAND
+# EXPLAIN WHY WITH EXAMPLE EASY TO UNDERSTAND
 
 RULES > PATH BASED ROUTING IS NOT POSSIBLE.
 PATH BASED ROUTING IS NOT POSSIBLE WHEN WE USE STANDARD SERVICE
@@ -9509,20 +9519,15 @@ curl <service-cluster-ip-of-nginx-service-from kubectl get svc>/public
 ✅ `/` → serves index.html  
 ✅ `/public` → “Access to public granted!”
 
-
-
 ### 4️⃣ Install NGINX Ingress Controller
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/cloud/deploy.yaml
-
 ```
 
 - Deploys **Ingress Controller** (as a LoadBalancer or NodePort depending on environment).
 
 - This controller is what actually listens to user HTTP requests.
-
-
 
 ### 5️⃣ Add entry in `/etc/hosts` (for local testing)
 
@@ -9546,8 +9551,6 @@ Add this line:
 
 - This domain name **"kubernetes.hindi.bootcamp"** must match the **host** in your `ingress.yaml`.
 
-
-
 ### 6️⃣ Apply Ingress Resource
 
 ```bash
@@ -9559,8 +9562,6 @@ kubectl get ing
 
 - Based on **path** or **host**, it sends traffic to the correct **Service** (ClusterIP).
 
-
-
 ### 7️⃣ Test it
 
 ```bash
@@ -9571,13 +9572,10 @@ curl kubernetes.hindi.bootcamp/public
 ✅ `/` → shows NGINX index page  
 ✅ `/public` → returns “Access to public granted!”
 
-
-
 #### 💡 HOW IT WORKS (EASY FLOW TO REMEMBER)
 
 ```sql
 User → Ingress Controller → Ingress → ClusterIP Service → Pod
-
 ```
 
 ## 🌍 IN PRODUCTION (CLOUD ENVIRONMENT)
@@ -9590,14 +9588,11 @@ Your statement was **almost correct**, here’s the **accurate version** 👇
 > This public IP or DNS name is managed by the **Cloud Controller Manager (CCM)**.  
 > Then, all your **Ingress resources** use that same Ingress Controller’s IP/DNS to handle external traffic.
 
-
-
 #### 🔁 PRODUCTION FLOW
 
 ```java
 User → Cloud LoadBalancer (public IP) → Ingress Controller (inside cluster)
      → Ingress Resource → ClusterIP Service → Pods
-
 ```
 
 ### 🧭 HOSTNAME CONFIGURATION
@@ -9623,15 +9618,11 @@ host: app.mycompany.com
 ✅ Now, external users hit `https://app.mycompany.com`,  
 and the traffic automatically routes through the **LoadBalancer → Ingress Controller → Ingress → Service → Pod**.
 
-
-
 ## ⚙️ WHY PATH-BASED ROUTING WORKS HERE
 
 > Standard Services (ClusterIP / NodePort) can’t do **path-based routing** (`/app1`, `/app2`)  
 > because they work only at **TCP/port level**.  
 > Ingress works at **HTTP layer (Layer 7)** — it can route by path or host.
-
-
 
 ## 🧠 SUMMARY — EASY TO REMEMBER
 
@@ -9644,8 +9635,6 @@ and the traffic automatically routes through the **LoadBalancer → Ingress Cont
 | **/etc/hosts (local)**   | Maps custom host → node IP                 | For testing without DNS        |
 | **Path-based Routing**   | Routes by URL path                         | `/app1` → svc1, `/app2` → svc2 |
 
-
-
 ✅ **In short (Easy line to memorize):**
 
 > Ingress = Smart Gateway  
@@ -9653,16 +9642,10 @@ and the traffic automatically routes through the **LoadBalancer → Ingress Cont
 > ClusterIP = Internal connector  
 > LoadBalancer = Cloud entry point
 
-
-
 full flow:
 User → Cloud LoadBalancer → Ingress Controller → Ingress → ClusterIP Service → Pod (with / and /public paths)
 
-
-
 ![Kubernetes HTTP Request Routing Flow1.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\Kubernetes%20HTTP%20Request%20Routing%20Flow1.png)
-
-
 
 # ✅ **Corrected & Clean, Easy Explanation of ExternalDNS**
 
@@ -9684,14 +9667,10 @@ POD(POD Implementation is PROVIDER SPECIFIC) > SCAN SVC, INGRESS ] EXTERNAL DNS 
 
 - Makes DNS updates **automatic & consistent**
 
-
-
 ### ✔ Corrected
 
 **ExternalDNS automatically watches Kubernetes Services and Ingress objects and creates/updates DNS records in your cloud DNS provider (AWS, GCP, Azure, etc.).**  
 No manual IP entry is required.
-
-
 
 ### ✔ Corrected
 
@@ -9721,8 +9700,6 @@ app.example.com → LoadBalancer IP of Ingress Controller
 
 Yes — **ExternalDNS supports multiple DNS providers** (AWS Route53, Google Cloud DNS, Azure DNS, Cloudflare, etc.) through plugins.
 
-
-
 # 🎯 **Short, Easy-To-Remember Summary**
 
 ### **ExternalDNS = Auto-DNS Manager for Kubernetes**
@@ -9735,8 +9712,6 @@ Yes — **ExternalDNS supports multiple DNS providers** (AWS Route53, Google Clo
 
 - Works with LoadBalancer Services & Ingress
 
-
-
 ### 🎯 **Simple Flow to Remember**
 
 ```markdown
@@ -9746,10 +9721,7 @@ Yes — **ExternalDNS supports multiple DNS providers** (AWS Route53, Google Clo
 4. ExternalDNS detects it
 5. ExternalDNS creates DNS record in cloud DNS
 6. User → DNS → LoadBalancer → Ingress → Service → Pod
-
 ```
-
-
 
 # 🟦 **Simple Example (Very Easy)**
 
@@ -9774,7 +9746,6 @@ spec:
             name: myapp-service
             port:
               number: 80
-
 ```
 
 What ExternalDNS does automatically
@@ -9782,7 +9753,6 @@ What ExternalDNS does automatically
 ```php
 Creates DNS entry:
 app.example.com → <LoadBalancer IP of Ingress Controller>
-
 ```
 
 #### 🟦 **Sample ExternalDNS Deployment Snippet**
@@ -9803,7 +9773,6 @@ spec:
         - --registry=txt
         - --domain-filter=example.com
         - --source=ingress
-
 ```
 
 # 🟩 **Easy Commands to Deploy & Check**
@@ -9836,7 +9805,6 @@ kubectl get svc --namespace ingress-nginx
 
 ```markdown
 Create Ingress → ExternalDNS sees it → DNS record created → Domain works automatically.
-
 ```
 
 # ✅ **Scenario 1: Using ExternalDNS with Ingress (MOST COMMON)**
@@ -9853,7 +9821,6 @@ Create Ingress → ExternalDNS sees it → DNS record created → Domain works a
 
 ```csharp
 Ingress → Requires Ingress Controller → Gets LB IP or DNS → ExternalDNS creates DNS record
-
 ```
 
 ### Example:
@@ -9867,8 +9834,6 @@ ExternalDNS will only create DNS entry like:
 But routing inside the cluster is done by your **Ingress Controller**.
 
 ✔ Yes, you MUST install Ingress Controller here.
-
-
 
 # ✅ **Scenario 2: Using ExternalDNS with Service type=LoadBalancer (NO Ingress)**
 
@@ -9887,16 +9852,12 @@ Flow:
 
 No Ingress involved → No Ingress Controller required.
 
-
-
 #### 🎯 **Simple Rule to Remember**
 
 ```perl
 If you use Ingress → you MUST install an Ingress Controller.
 If you only use LoadBalancer Services → No Ingress Controller needed.
 ```
-
-
 
 # 📌 Practical Example Decision Table
 
@@ -9905,8 +9866,6 @@ If you only use LoadBalancer Services → No Ingress Controller needed.
 | Ingress              | ✅ YES                    | ✅ YES               |
 | LoadBalancer Service | ❌ NO                     | ✅ YES               |
 | ClusterIP Service    | ❌ NO                     | ❌ NO (no public IP) |
-
-
 
 # ⭐ Full Simple Picture
 
@@ -9929,15 +9888,11 @@ Ingress = needs Ingress Controller.
 ExternalDNS only creates DNS records.
 ```
 
-
-
 # ✅ **Corrected Concept Summary (Very Simple)**
 
 ### **What is ExternalDNS?**
 
 ExternalDNS is a **Kubernetes project** that automatically **creates DNS records** in your **cloud provider’s DNS** (AWS Route53, Google Cloud DNS, Azure DNS, Cloudflare, Civo DNS, etc.) based on **Services** or **Ingress**.
-
-
 
 # 🎯 **ONE-LINER RULES (Easy to Remember)**
 
@@ -9948,8 +9903,6 @@ ExternalDNS is a **Kubernetes project** that automatically **creates DNS records
 ### ⭐ “Provider implementation + authentication varies per cloud (token, IAM role, API key).”
 
 ### ⭐ “ExternalDNS ≠ Ingress Controller. It only manages DNS, NOT traffic routing.”
-
-
 
 # ✅ **Corrected Version of Your Statements**
 
@@ -9973,13 +9926,10 @@ ExternalDNS is a **Kubernetes project** that automatically **creates DNS records
 
 “Each cloud provider requires its own authentication method (API key, token, IAM role, service account, etc).”
 
-
-
 🧠 **VERY EASY FLOW TO REMEMBER**
 
 ```pgsql
 You create Service/Ingress → ExternalDNS sees it → Talks to cloud DNS → Creates DNS record automatically
-
 ```
 
 `You create Service/Ingress → ExternalDNS sees it → Talks to cloud DNS → Creates DNS record automatically`
@@ -9987,8 +9937,6 @@ You create Service/Ingress → ExternalDNS sees it → Talks to cloud DNS → Cr
 Cloud provider → route traffic to → LoadBalancer / Ingress → Service → Pod
 
 ExternalDNS only manages the DNS part.
-
-
 
 # 📌 **Why ExternalDNS is needed?**
 
@@ -9999,8 +9947,6 @@ Without ExternalDNS:
 With ExternalDNS:
 
 - DNS is created automatically when Kubernetes Service/Ingress is created.
-
-
 
 ```yaml
 externaldnspod.yaml:
@@ -10134,8 +10080,6 @@ Important fields:
 
 → API key for provider
 
-
-
 📌 **Your Example Service (nginx2)**
 
 `external-dns.alpha.kubernetes.io/hostname: my-app2.saiyampathak.com`
@@ -10145,8 +10089,6 @@ This tells ExternalDNS:
 `Please create DNS record "my-app2.saiyampathak.com → LoadBalancer IP"`
 
 As soon as the LB comes up, ExternalDNS updates DNS automatically.
-
-
 
 # 🧾 **FINAL NOTES FOR STUDY (Simplest Possible)**
 
@@ -10191,8 +10133,719 @@ Routing is done by:
 
 - Add host to Ingress
 
-
-
 FLOW EXTERNAL DNS :
 
 ![externalDNS.png](D:\Kubernetes%20Learning\kube_screenshot\part%208\externalDNS.png)
+
+***
+
+***
+
+### **EXAMPLE ::**
+
+Nice — I converted our example into a working setup that:
+
+- The Python app is turned into a small **Flask** web app that stays running and, on HTTP request, connects to PostgreSQL and returns the `version()` (so it won’t exit immediately).
+
+- PostgreSQL runs in `database-ns` (Deployment + Service).
+
+- `application-ns` hosts the Python app (Deployment + Service).
+
+- Cross-namespace access uses an **ExternalName** Service (`external-db-service` in `application-ns`) that points to the DB service in `database-ns`.
+
+- The Python app is exposed outside the cluster via an **Ingress** (assumes an IngressController is installed, e.g. nginx-ingress).
+
+Apply the YAMLs in the order shown below. I also add useful test/debug commands.
+
+
+
+app.yaml :
+
+```yaml
+#############################
+# 1️⃣ CREATE NAMESPACES FIRST
+#############################
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: database-ns
+  
+---
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: application-ns
+
+---
+#############################################
+# 2️⃣ CONFIGMAP FOR PYTHON APP + REQUIREMENTS 
+# App ConfigMap (contains app.py and requirements.txt) — app-configmap.yaml
+
+# This mounts app files into the container so you can run official python:3.9-slim without building a custom image.
+#############################################
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-app-files
+  namespace: application-ns
+data:
+  app.py: |
+    # app.py
+    from flask import Flask, jsonify
+    import psycopg2
+    import os
+    import traceback
+
+    app = Flask(__name__)
+
+    def get_db_version():
+        db_host = os.getenv("DATABASE_HOST", "external-db-service")
+        db_port = os.getenv("DATABASE_PORT", "5432")
+        db_user = os.getenv("DATABASE_USER", "postgres")
+        db_password = os.getenv("DATABASE_PASSWORD", "example")
+        db_name = os.getenv("DATABASE_NAME", "postgres")
+
+        conn_string = f"host={db_host} port={db_port} dbname={db_name} user={db_user} password={db_password}"
+        try:
+            conn = psycopg2.connect(conn_string, connect_timeout=5)
+            cur = conn.cursor()
+            cur.execute("SELECT version();")
+            version = cur.fetchone()[0]
+            cur.close()
+            conn.close()
+            return {"ok": True, "version": version}
+        except Exception as e:
+            return {"ok": False, "error": str(e), "trace": traceback.format_exc()}
+
+    @app.route("/")
+    def index():
+        result = get_db_version()
+        if result["ok"]:
+            return jsonify({"message": "connected", "version": result["version"]})
+        else:
+            return jsonify({"message": "unable to connect", "error": result["error"]}), 500
+
+    if __name__ == "__main__":
+        # Use port 80 so Ingress can route to it easily
+        app.run(host="0.0.0.0", port=80)
+  requirements.txt: |
+    Flask
+    psycopg2-binary
+
+---
+###############################
+# 3️⃣ POSTGRES DEPLOYMENT + SVC
+###############################
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-database
+  namespace: database-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-database
+  template:
+    metadata:
+      labels:
+        app: my-database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+          - name: POSTGRES_PASSWORD
+            value: "example"
+          - name: POSTGRES_DB
+            value: "postgres"
+        ports:
+        - containerPort: 5432
+---
+###############################
+# 3️⃣ POSTGRES SVC
+###############################
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-database-service
+  namespace: database-ns
+spec:
+  selector:
+    app: my-database
+  ports:
+  - protocol: TCP
+    port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+###########################################
+# 4️⃣ PYTHON APPLICATION DEPLOYMENT + SVC 
+# This uses python:3.9-slim, mounts the files and runs pip install then starts Flask.
+###########################################
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-application
+  namespace: application-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-application
+  template:
+    metadata:
+      labels:
+        app: my-application
+    spec:
+      containers:
+      - name: app
+        image: python:3.9-slim
+        command:
+          - sh
+          - -c
+          - |
+            pip install --no-cache-dir -r /app/requirements.txt && exec python /app/app.py
+        env:
+        - name: DATABASE_HOST
+          value: "external-db-service"        # ExternalName in same namespace (application-ns)
+        - name: DATABASE_PORT
+          value: "5432"
+        - name: DATABASE_USER
+          value: "postgres"
+        - name: DATABASE_PASSWORD
+          value: "example"
+        - name: DATABASE_NAME
+          value: "postgres"
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: app-files
+          mountPath: /app
+      volumes:
+      - name: app-files
+        configMap:
+          name: my-app-files
+
+---
+###########################################
+# 4️⃣ PYTHON APPLICATION SVC
+###########################################
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-application-svc
+  namespace: application-ns
+spec:
+  selector:
+    app: my-application
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  type: ClusterIP
+
+
+---
+#################################################
+# 5️⃣ EXTERNALNAME SERVICE FOR DB CROSS-NAMESPACE 
+# This makes the database appear as external-db-service inside 
+# application-ns and resolves to the service in database-ns.
+
+# Important: ExternalName must not have a selector — the spec above is correct.
+#################################################
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-db-service
+  namespace: application-ns
+spec:
+  type: ExternalName
+  externalName: my-database-service.database-ns.svc.cluster.local
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+
+---
+#############################
+# 6️⃣ INGRESS (UPDATED FORMAT) 
+# This routes HTTP traffic for kubernetes.hindi.bootcamp to 
+# the Python app service. I include a common nginx ingress 
+# annotation; adapt the ingressClassName (nginx) to 
+# whatever controller you have.
+#############################
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: application-ingress
+  namespace: application-ns
+  #annotations:
+  #  kubernetes.io/ingress.class: "nginx"   # change if your ingress uses a different class. This  is deprecated use spec:ingressClassName: nginx
+spec:
+  ingressClassName: nginx                  # correct modern usage
+  rules:
+  - host: "kubernetes.hindi.bootcamp"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-application-svc
+            port:
+              number: 80
+```
+
+requirements.txt:
+
+```makefile
+Flask
+psycopg2-binary
+```
+
+✅ Step-1: Update /etc/hosts to point to the correct Node IP (NOT localhost)
+Instead of:                     127.0.0.1 kubernetes.hindi.bootcamp
+Replace with the node IP:       172.30.2.2 kubernetes.hindi.bootcamp
+or whatever ip a shows.
+
+##### **vi /etc/hosts**
+
+<INGRESS_IP>    kubernetes.hindi.bootcamp
+
+1.                     34.88.22.10             kubernetes.hindi.bootcamp
+
+2. if using Minikube:   192.168.49.2    kubernetes.hindi.bootcamp
+
+3. Killercoda:          127.0.0.1       kubernetes.hindi.bootcamp
+
+Kind cluster → Ingress lives on 127.0.0.1
+Killercoda → often uses 127.0.0.1 or the node01 IP (run ip a to confirm)
+
+```bash
+vi /etc/hosts
+#127.0.0.1 localhost
+127.0.0.1       kubernetes.hindi.bootcamp
+# The following lines are desirable for IPv6 capable hosts
+::1 ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+127.0.0.1 ubuntu
+127.0.0.1 host01
+127.0.0.1 controlplane
+172.30.2.2 node01
+
+```
+
+**Installing Ingress Controller :**
+
+```bash
+controlplane:~$ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/cloud/deploy.yaml
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+serviceaccount/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+configmap/ingress-nginx-controller created
+service/ingress-nginx-controller created
+service/ingress-nginx-controller-admission created
+deployment.apps/ingress-nginx-controller created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+networkpolicy.networking.k8s.io/ingress-nginx-admission created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+```
+
+✅ Step-1: Verify Ingress Controller exists
+
+**✅ Step-2: Checking Ingress Controller is Up AND Running**
+
+- Your **Ingress Controller** (`ingress-nginx-controller`) is up and running.
+
+- The **admission webhook jobs** (`admission-create` and `admission-patch`) have already completed their setup tasks successfully.
+
+- Everything looks normal — this is the expected state right after deploying **NGINX Ingress Controller**.
+
+This command confirms that your **NGINX Ingress Controller is installed and working**, with its setup jobs completed and the controller pod running.
+
+- `kubectl get pods -A` → Lists **all pods across all namespaces**.
+
+- `grep -i ingress` → Filters the output to show only pods whose names or namespaces contain “ingress” (case-insensitive).
+
+```bash
+controlplane:~$ kubectl get pods -A | grep -i ingress
+ingress-nginx        ingress-nginx-admission-create-sgmdw        0/1     Completed   0             34s
+ingress-nginx        ingress-nginx-admission-patch-q7gfl         0/1     Completed   0             34s
+ingress-nginx        ingress-nginx-controller-5fcc46fbb4-wpn56   1/1     Running     0             34s
+```
+
+
+
+**✅ Step-3: This command lists all services across namespaces, filters for those related to ingress, and shows:**
+
+- `ingress-nginx-controller` → the main ingress service, exposed as a **LoadBalancer** (external traffic entry point).
+
+- `ingress-nginx-controller-admission` → an internal **ClusterIP** service used for webhook admission checks.
+
+👉 In short: it shows the ingress controller’s services — one for external traffic, one for internal validation.
+
+```bash
+controlplane:~$ kubectl get svc -A | grep -i ingress
+ingress-nginx   ingress-nginx-controller             LoadBalancer   10.105.78.150    <pending>     80:31553/TCP,443:32229/TCP   60s
+ingress-nginx   ingress-nginx-controller-admission   ClusterIP      10.102.231.167   <none>        443/TCP                      60s
+```
+
+
+
+**✅ Step-4:** This command shows the **Ingress Controller service** in the `ingress-nginx` namespace — it’s of type **LoadBalancer**, with a cluster‑internal IP, but the external IP is still `<pending>` (waiting for a cloud load balancer to be assigned).
+
+👉 In short: it displays how the ingress controller is exposed to route external traffic into your cluster.
+
+```bash
+controlplane:~$ kubectl -n ingress-nginx get svc ingress-nginx-controller
+NAME                       TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller   LoadBalancer   10.105.78.150   <pending>     80:31553/TCP,443:32229/TCP   116s
+```
+
+
+
+**✅ Step-5:  Check Ingress-Controller Service**
+
+Run:       `kubectl get svc -A | grep -i ingress`
+
+Expected output (normal clusters):
+
+```bash
+controlplane:~$ kubectl get svc -A | grep -i ingress
+ingress-nginx   ingress-nginx-controller             LoadBalancer   10.105.78.150    <pending>     80:31553/TCP,443:32229/TCP   60s
+ingress-nginx   ingress-nginx-controller-admission   ClusterIP      10.102.231.167   <none>        443/TCP                      60s
+```
+
+```bash
+ingress-nginx-controller   LoadBalancer   <IP>    80:xxxxx/TCP
+
+```
+
+But on **Killercoda**, usually you see:
+
+```bash
+ingress-nginx-controller   NodePort   <none>   80:<nodePort>/TCP
+
+```
+
+If it is **NodePort**, then:
+
+Ingress listens on:
+
+```makefile
+node01:nodePort
+```
+
+NOT on:
+
+```makefile
+127.0.0.1:80
+```
+
+```bash
+controlplane:~$ curl -v http://kubernetes.hindi.bootcamp/ 
+* Host kubernetes.hindi.bootcamp:80 was resolved. 
+* IPv6: (none) * IPv4: 127.0.0.1 * Trying 127.0.0.1:80... * 
+connect to 127.0.0.1 port 80 from 127.0.0.1 port 49978 
+failed: Connection refused * Failed to connect to kubernetes.hindi.bootcamp port 80 after 0 ms: Couldn't connect to server * Closing connection curl: (7) Failed to connect to kubernetes.hindi.bootcamp port 80 after 0 ms: Couldn't connect to server
+```
+
+Great — now DNS **is working**, because:
+
+`Host kubernetes.hindi.bootcamp:80 was resolved.IPv4: 127.0.0.1`
+
+But the error is:
+
+`Connection refused`
+
+➡️ This means **nothing is actually listening on 127.0.0.1:80**  
+➡️ That tells us **the Ingress Controller is not running OR not bound to port 80 on the node**.
+
+Which explains our error.
+
+To Install Ingress-Controller :
+
+`kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/cloud/deploy.yaml`
+
+But Killercoda nodes **do not expose LoadBalancer IPs**, so you must use **NodePort**.
+
+Check the NodePort:
+
+`kubectl -n ingress-nginx get svc ingress-nginx-controller`
+
+Example Output: 
+
+```bash
+NAME                       TYPE       CLUSTER-IP     EXTERNAL-IP  PORT(S)
+ingress-nginx-controller   NodePort   10.2.2.5       <none>       80:30533/TCP
+
+```
+
+Here:   NodePort = 30533, And node01 IP usually is: 172.30.2.2
+
+
+
+**✅ Step-6: EDITING Ingress Controller service definition**
+
+`kubectl -n ingress-nginx edit svc ingress-nginx-controller`
+
+This command opens the **Ingress Controller service definition** for editing, and by changing `type: LoadBalancer` to `type: NodePort`, you make the ingress controller accessible through a port on each cluster node instead of waiting for a cloud load balancer.
+
+👉 In short: it reconfigures the ingress service to use **NodePort** so you can reach it directly via node IP + port.
+
+```bash
+kubectl -n ingress-nginx edit svc ingress-nginx-controller
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"controller","app.kubernetes.io/instance":"ingress-nginx","app.ku
+  creationTimestamp: "2025-11-16T15:58:00Z"
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+    app.kubernetes.io/version: 1.9.4
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+  resourceVersion: "3943"
+  uid: 9f061481-36f6-4857-a3de-fd20399eda96
+spec:
+  allocateLoadBalancerNodePorts: true
+  clusterIP: 10.105.78.150
+  clusterIPs:
+  - 10.105.78.150
+  externalTrafficPolicy: Local
+  healthCheckNodePort: 30286
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - appProtocol: http
+    name: http
+    nodePort: 31553
+    port: 80
+    protocol: TCP
+    targetPort: http
+  - appProtocol: https
+    name: https
+    nodePort: 32229
+    port: 443
+    protocol: TCP
+    targetPort: https
+  selector:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+  sessionAffinity: None
+  type: LoadBalancer
+status:
+  loadBalancer: {}
+```
+
+Change type: LoadBalancer to NodePort.
+
+
+
+**✅ Step-7: Check Ingress-Controller Service for LoadBalancer/Nodeport**
+
+```bash
+# checking service from ingress-nginx namespace
+controlplane:~$ kubectl get svc -n ingress-nginx
+NAME                                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             NodePort    10.105.78.150    <none>        80:31553/TCP,443:32229/TCP   7m37s
+ingress-nginx-controller-admission   ClusterIP   10.102.231.167   <none>        443/TCP                      7m37s
+
+# checking all service from all namespace and filter out whose names or namespaces contain “ingress”
+controlplane:~$ kubectl get svc -A | grep -i ingress
+ingress-nginx   ingress-nginx-controller             NodePort    10.105.78.150    <none>        80:31553/TCP,443:32229/TCP   8m14s
+ingress-nginx   ingress-nginx-controller-admission   ClusterIP   10.102.231.167   <none>        443/TCP                      8m14s
+  
+
+
+controlplane:~$ kubectl get svc -n ingress-nginx
+NAME                                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             NodePort    10.105.78.150    <none>        80:31553/TCP,443:32229/TCP   9m8s
+ingress-nginx-controller-admission   ClusterIP   10.102.231.167   <none>        443/TCP                      9m8s
+```
+
+
+
+###### ✅ Step-8:
+
+This command lists all the **nodes in the cluster with extra details** like their roles, IPs, OS, kernel, and container runtime.
+
+👉 In short: it shows the cluster’s machines and their technical info (control plane vs worker, IPs, OS, runtime).
+
+```bash
+controlplane:~$ kubectl get nodes -owide
+NAME           STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION     CONTAINER-RUNTIME
+controlplane   Ready    control-plane   28d   v1.34.1   172.30.1.2    <none>        Ubuntu 24.04.3 LTS   6.8.0-51-generic   containerd://1.7.28
+node01         Ready    <none>          27d   v1.34.1   172.30.2.2    <none>        Ubuntu 24.04.3 LTS   6.8.0-51-generic   containerd://1.7.28
+```
+
+###### ✅ Step-9:
+
+```bash
+controlplane:~$ kubectl get svc -n ingress-nginx -owide
+NAME                                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE   SELECTOR
+ingress-nginx-controller             NodePort    10.105.78.150    <none>        80:31553/TCP,443:32229/TCP   10m   app.kubernetes.io/component=controller,app.kubernetes.io/instance=ingress-nginx,app.kubernetes.io/name=ingress-nginx
+ingress-nginx-controller-admission   ClusterIP   10.102.231.167   <none>        443/TCP                      10m   app.kubernetes.io/component=controller,app.kubernetes.io/instance=ingress-nginx,app.kubernetes.io/name=ingress-nginx
+```
+
+This command shows all **Ingress Controller services** in the `ingress-nginx` namespace with extra details.
+
+👉 In short: it lists the ingress services — one (`NodePort`) for external access via node IP + port, and one (`ClusterIP`) for internal admission webhook checks.
+
+
+
+###### ✅ Step-10:
+
+```bash
+controlplane:~$ kubectl apply -f app.yaml 
+namespace/database-ns created
+namespace/application-ns created
+configmap/my-app-files created
+deployment.apps/my-database created
+service/my-database-service created
+deployment.apps/my-application created
+service/my-application-svc created
+service/external-db-service created
+ingress.networking.k8s.io/application-ingress created
+```
+
+
+
+##### **🚀 Final Checks (optional but recommended)**
+
+1. 1️⃣ Get all Ingresses
+   kubectl get ingress -A
+
+2. 2️⃣ Show active ingress rules
+   kubectl describe ingress -n <your-namespace>
+
+3. 3️⃣ Test full request
+   `curl http://kubernetes.hindi.bootcamp:30530/`
+
+COMMANDS: 
+
+```bash
+
+controlplane:~$ kubectl get ingress -A
+NAMESPACE        NAME                  CLASS   HOSTS                       ADDRESS         PORTS   AGE
+application-ns   application-ingress   nginx   kubernetes.hindi.bootcamp   10.105.78.150   80      26s 
+
+controlplane:~$ kubectl describe ingress -n application-ns  
+Name:             application-ingress
+Labels:           <none>
+Namespace:        application-ns
+Address:          10.105.78.150
+Ingress Class:    nginx
+Default backend:  <default>
+Rules:
+  Host                       Path  Backends
+  ----                       ----  --------
+  kubernetes.hindi.bootcamp  
+                             /   my-application-svc:80 (192.168.1.9:80)
+Annotations:                 <none>
+Events:
+  Type    Reason  Age                From                      Message
+  ----    ------  ----               ----                      -------
+  Normal  Sync    35s (x2 over 50s)  nginx-ingress-controller  Scheduled for sync
+controlplane:~$ 
+
+
+
+controlplane:~$ kubectl get svc -n ingress-nginx 
+NAME                                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             NodePort    10.105.78.150    <none>        80:31553/TCP,443:32229/TCP   27m
+ingress-nginx-controller-admission   ClusterIP   10.102.231.167   <none>        443/TCP                      27m  
+
+
+controlplane:~$ kubectl get nodes -owide
+NAME           STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION     CONTAINER-RUNTIME
+controlplane   Ready    control-plane   28d   v1.34.1   172.30.1.2    <none>        Ubuntu 24.04.3 LTS   6.8.0-51-generic   containerd://1.7.28
+node01         Ready    <none>          28d   v1.34.1   172.30.2.2    <none>        Ubuntu 24.04.3 LTS   6.8.0-51-generic   containerd://1.7.28
+```
+
+Final Command To CHeck Everything is Running :
+
+```bash
+controlplane:~$ curl -I http://172.30.1.2:31553
+HTTP/1.1 404 Not Found
+Date: Sun, 16 Nov 2025 16:27:58 GMT
+Content-Type: text/html
+Content-Length: 146
+Connection: keep-alive
+
+
+
+controlplane:~$ curl -I http://kubernetes.hindi.bootcamp:31553/
+HTTP/1.1 200 OK
+Date: Sun, 16 Nov 2025 16:29:13 GMT
+Content-Type: application/json
+Content-Length: 125
+Connection: keep-alive
+
+# NodePort : 31553 from above command kubectl get svc -n ingress-nginx
+# If you see actual JSON or your app response → everything is 100% perfect.
+controlplane:~$ curl http://kubernetes.hindi.bootcamp:31553/
+{"message":"connected","version":"PostgreSQL 15.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit"}
+controlplane:~$ 
+```
+
+**If you see actual JSON or your app response → everything is 100% perfect.**
+
+If the DB is reachable the JSON returned will include `version`. If not, the response will have an error with traceback to help debugging.
+
+# 6) Notes, gotchas & explanations
+
+- **Why ExternalName?** The `external-db-service` in `application-ns` is simply a DNS alias pointing to `my-database-service.database-ns.svc.cluster.local`. The app only needs to use the hostname `external-db-service` (no namespace) and it will resolve by cluster DNS to the DB service in the other namespace.
+
+- **IngressController required:** the above Ingress will only work if an IngressController (nginx/traefik/etc.) is installed and configured and the host `kubernetes.hindi.bootcamp` resolves to the controller’s external IP. If you don’t have one, install the nginx ingress controller (Helm chart or manifests).
+
+- **Security:** using plaintext DB password in env is fine for demo; for production use Secrets (Kubernetes Secret) instead of plain env values.
+
+- **Image approach:** The manifests use a ConfigMap-mounted app + base `python:3.9-slim` so you don’t have to build/push a custom image. For production you should build and push your own image with app baked in.
+
+
+
+***
+
+***
+
+#### PART 9 :
+
+###### <mark>**RBAC, SERVICE ACCOUNT, IMAGEPOLICYWEBHOOK, AUTHENTICATION**</mark>
