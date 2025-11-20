@@ -1,0 +1,141 @@
+whats the use of creating new user ?
+
+we cannot give admin user to everyone . we have to create different user and distribute into our team. we want for some people we want to give access of only few parts for some users. and we want to give access of few parts to some people. that's why we have to create user and role and rolebinding.
+
+
+
+
+
+
+controlplane:~$ openssl genrsa -out raj.key 2048
+controlplane:~$ ls
+filesystem  raj.key
+controlplane:~$ openssl req -new -key raj.key -out raj.csr -subj "/CN=raj/0=group1"
+req warning: Skipping unknown subject name attribute "0"
+controlplane:~$ ls
+filesystem  raj.csr  raj.key
+controlplane:~$ cat raj.csr | base64 | tr -d '\n'
+LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ1V6Q0NBVHNDQVFBd0RqRU1NQW9HQTFVRUF3d0RjbUZxTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQwpBUThBTUlJQkNnS0NBUUVBb1pMcm1tUmZtdmtKWTVmUTVCWjhsUU5jK2NWSXB4UlJ1VkVlekpvU2V6eVVxTSszCmFuOHl2dEM3a2VHYkdNZUM4VTQ0K25iWnZsMnhXMTdsQVpYQnV5UHVkSjB3VXNJY3hqbzl3d2pRSGQyenpSNEsKZElsZ1VmTzBVTnFUODBTVFB6NjRiNkI2b0twZzkyeEpqbFh1SkhabW9GTmZvekc1UXNLS016S282RUlBYkNwQQpWRm9xZnl3V0Evd2JCaGNGcUwvbTFZeC9kZmZSbnFqcUNZYmhvdW9aRlJzWHl6bldjdHBHb0kyQW9HN1lWWTJ6Ckk4WFlXSWxEMUJtQmZnaDdsMVRNaTdHTnFYUkR5ZHRrZGo4eXExNWtZTElvajF6M2pkeU1Vblg1bE45ZDJnR3MKbFNCN2paei9pOGgvbkEvWDBEN1FlU2pGbFVJdExZNk41TFdMelFJREFRQUJvQUF3RFFZSktvWklodmNOQVFFTApCUUFEZ2dFQkFJWklmNnMzTHlXbFlGTWhLNm94UmYvVnhEbktyMVZOWE9BY3d2NUx4ZlVPSjhtcmd3Z0M4YlFtCjlRdG9Pb0MyZUc1ampvam0wWHN0UHBhbHB3bVFqbHVocnpHL3oxTzRwNWx2T01FT0JheExjeXJ6RzdWZStZVDYKc25seFBHWjAvempTZVVGUkV0WE1YNXFiYjRHV1A0a3lIR3N4T2dKcUhzUGtid2QyMWsvK0ZqWFhPRk5oZWcvTAppMFlYdER2WnFwSlRiN2RYTGZsOE5FQW5Zb2t5Rk5YVjk0UXNHdFJHRCtDSEdDQU5VelBzNFk1dTRFcTlnM0ZzClZXVnBEYWVsb0YxNWhHK2FlWnplZEFQWmNRVWVNalZXT25aVWhyNkEyRXRJOHpBMkswZFZHWjRUMDFHbUVyZFcKb1dnSmRrOHY3YTNBK1hvWDRsUzRVNFZuRFZNQ3pIcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUgUkVRVUVTVC0tLS0tCg==controlplane:~$ ls
+filesystem  raj.csr  raj.key
+
+
+controlplane:~$ vi csr.yaml
+
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: saiyam
+spec:
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ1V6Q0NBVHNDQVFBd0RqRU1NQW9HQTFVRUF3d0RjbUZxTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQwpBUThBTUlJQkNnS0NBUUVBb1pMcm1tUmZtdmtKWTVmUTVCWjhs
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth
+
+
+controlplane:~$ ls
+csr.yaml  filesystem  raj.csr  raj.key
+controlplane:~$ kubectl apply -f csr.yaml
+certificatesigningrequest.certificates.k8s.io/saiyam created
+controlplane:~$ kubectl certificate approve saiyam
+certificatesigningrequest.certificates.k8s.io/saiyam approved
+controlplane:~$ kubectl get csr saiyam -o jsonpath='{.status.certificate}' | base64 --decode > saiyam.crt
+controlplane:~$ ls
+csr.yaml  filesystem  raj.csr  raj.key  saiyam.crt
+
+
+
+
+
+
+
+
+
+controlplane:~$ vi role.yaml
+controlplane:~$ kubectl apply -f role.yaml
+role.rbac.authorization.k8s.io/pod-reader created
+rolebinding.rbac.authorization.k8s.io/read-pods created
+controlplane:~$ kubectl config set-credentials raj --client-certificate=saiyam.crt --client-key=raj.key
+User "raj" set.
+controlplane:~$ kubectl config get-contexts
+CURRENT   NAME                          CLUSTER      AUTHINFO           NAMESPACE
+*         kubernetes-admin@kubernetes   kubernetes   kubernetes-admin
+controlplane:~$ kubectl config set-context raj-context --cluster=kubernetes --namespace=default --user=raj
+Context "raj-context" created.
+controlplane:~$ kubectl config get-contexts
+CURRENT   NAME                          CLUSTER      AUTHINFO           NAMESPACE
+*         kubernetes-admin@kubernetes   kubernetes   kubernetes-admin
+          raj-context                   kubernetes   raj                default
+controlplane:~$ kubectl config use-context raj-context
+Switched to context "raj-context".
+controlplane:~$ kubectl config get-contexts
+CURRENT   NAME                          CLUSTER      AUTHINFO           NAMESPACE
+          kubernetes-admin@kubernetes   kubernetes   kubernetes-admin
+*         raj-context                   kubernetes   raj                default
+controlplane:~$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

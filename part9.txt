@@ -1,4 +1,1128 @@
 
 RBAC, SERVICE ACCOUNT, IMAGEPOLICYWEBHOOK, AUTHENTICATION
 
+AUTHENTICATION, AUTHORIZATION, ADMISSION :
+
+external UMS (external user management system)
+first request came in user will be authenticated. reqular user is managed by external user management system (ExternalUMS).ServiceAccount is managed by Kubernetes. Whatever the pods that interact with Kubernetes api they will interact through ServiceAccount
+in AUTHENTICATION there is credential check and when credential check is passed then (UserInfo,Username,UID,Groups,Fields) gets added before moving to authorization. AUTHENTICATION plugins are like X509 Client Certs, Static token file, Bootstrap Tokens, Service account tokens, OpenID connect tokens, webhook token authentication, Authenticating proxy, Anonymous auth that we can use. Then AUTHORIZATION where check if user is allowed to perform the requested operation and then ADMISSION where policy check via ADMISSION-Controllers.
+
+Admission-Controllers validate and mutate the request coming to the API-Server.
+
+ADMISSION-Controllers : there are some in-built admission-controllers and we can also custom create ADMISSION-Controllers.
+1. Validating Admission-Controller : validate the request
+2. Mutating Admission-Controller : add stuff to the request.
+
+Example:
+suppose our application if of Banking app running in cluster and we hosted our own registry and we want that in our Kubernetes cluster any request comes for pod generation then for that image would fetch from our own registry and if image is not fetching from our own registry then make the request invalid. like if namespace is not defined then cancel the request is another example
+
+we can use default Admission-Controllers or custom-made Admission-Controllers like Kyverno project or oppa or kubewarden
+
+Mutating Admission-Controller(adding stuff to the request) example like when we run "kubectl run nginx --image=nginx" and when we run "kubectl describe pod nginx"  you will see ServiceAccount added with default ServiceAccount even though we did not mention ServiceAccount when we created pod. like when we create resource in Kubernetes automatically resource-limit, resource-quota added automatically even when we do not mention it Kubernetes add them automatically this means it is Mutating through admission-controller. what is happening is that it is automatically Mutating the service request and add defaults to it.
+
+                                               (Custom) Webhook                                   Webhook
+                                                           ^                                          ^
+                                                           ^                                          ^
+Request >> Authentication/AUTHORIZATION/Admission >> (Mutating Admission) Schema Validation >> Validatin Admission
+
+Request first goest to Authentication then AUTHORIZATION then Admission here first request goes to Mutating-Admission then Custom-Webhook then Schema-Validate then Validating-Admission then Webhook
+
+# CHECK THIS ENTIRE STATEMENT AND MAKE CORRECTION CHATGPT IN EASY TO UNDERSTAND AND REMEMBER.
+before Kubernetes 1.24 when we run "kubectl create sa saiyam" a secret used to be created and this secret is token for authentication which generated automatically now we need to generate token but inside pod it automatically generates inside pod it generates by default by one hour
+
+controlplane:~$ kubectl run mynginx --image=nginx
+pod/mynginx created
+
+controlplane:~$ kubectl create sa raj
+serviceaccount/raj created
+controlplane:~$ kubectl get sa
+NAME      SECRETS   AGE
+default   0         34h
+raj       0         8s
+
+controlplane:~$ kubectl describe sa raj
+Name:                raj
+Namespace:           default
+Labels:              <none>
+Annotations:         <none>
+Image pull secrets:  <none>
+Mountable secrets:   <none>
+Tokens:              <none>
+Events:              <none>
+
+controlplane:~$ kubectl exec -it mynginx -- bash
+root@mynginx:/# ls
+bin  boot  dev  docker-entrypoint.d  docker-entrypoint.sh  etc  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
+root@mynginx:/# cd /var/run/secrets/
+root@mynginx:/var/run/secrets# ls
+kubernetes.io
+root@mynginx:/var/run/secrets# cd kubernetes.io/
+root@mynginx:/var/run/secrets/kubernetes.io# ls
+serviceaccount
+root@mynginx:/var/run/secrets/kubernetes.io# cd serviceaccount/token
+bash: cd: serviceaccount/token: Not a directory
+root@mynginx:/var/run/secrets/kubernetes.io# cd serviceaccount/
+root@mynginx:/var/run/secrets/kubernetes.io/serviceaccount# cat token
+eyJhbGciOiJSUzI1NiIsImtpZCI6IlU5cXBiY243UGUxNzNPMUZGRUVwZHlicHY5VHZqUEtaZUZQakdVSlFjbTgifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNzk1MDY1Mzk5LCJpYXQiOjE3NjM1MjkzOTksImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwianRpIjoiYTYxOTMyNDItNGU3Ni00YmYzLWE0OGYtNTM4ZmU5YTNkODJjIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJkZWZhdWx0Iiwibm9kZSI6eyJuYW1lIjoibm9kZTAxIiwidWlkIjoiNmZiZWQ1NGYtYjc2MS00ZGFhLWIwZTEtY2IzMzFlZjcyYTk1In0sInBvZCI6eyJuYW1lIjoibXluZ2lueCIsInVpZCI6IjUzOGNlNTVjLTA1ZWYtNDI3OC1hNDIyLWQwZmFlM2Q3ODlkMyJ9LCJzZXJ2aWNlYWNjb3VudCI6eyJuYW1lIjoiZGVmYXVsdCIsInVpZCI6ImQyNjJkMDJhLTI5YTQtNGUwNS1hM2Q3LTZhMTcyMGQ4OGI3NiJ9LCJ3YXJuYWZ0ZXIiOjE3NjM1MzMwMDZ9LCJuYmYiOjE3NjM1MjkzOTksInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OmRlZmF1bHQifQ.Tyc9VXZa4FQ5WY2L2mOF_c1JlxU7GBtCz0nYOm89kmO_ZPt_JLSgsU-LUZ1yDxsyphAD95z2suN011A6J-9iuW3Zl-_dQfVCgBKORatxwR8tVCSGuRgCl-4dpw0Eqs6SJBICxRXEU6UsrjKnvc_ViXSPzTP-PLDAOE7mJqMJ-N3Sg9Ido8Qm-8PRT0Lz1Cxkumg9WbZZDgjesH3wdDe6NyqHuVOuf42C_vofUWF4DXjl5HIE8uaXLb59nB0kHUcSYGU3iUyi3kU_vEtTTeASl2TqPhQnlf9GnJrcGgmL0ULsLD97xKCuEA92BSQU13uBo0ioyBmOEpc3zkDqILfd6Aroot@mynginx:/var/run/secrets/kubernetes.io/serviceaccount#
+
+
+Decoded Header::
+{
+  "alg": "RS256",
+  "kid": "U9qpbcn7Pe173O1FFEEpdybpv9TvjPKZeFPjGUJQcm8"
+}
+Decoded Payload::
+{
+  "aud": [
+    "https://kubernetes.default.svc.cluster.local"
+  ],
+  "exp": 1795065399,
+  "iat": 1763529399,
+  "iss": "https://kubernetes.default.svc.cluster.local",
+  "jti": "a6193242-4e76-4bf3-a48f-538fe9a3d82c",
+  "kubernetes.io": {
+    "namespace": "default",
+    "node": {
+      "name": "node01",
+      "uid": "6fbed54f-b761-4daa-b0e1-cb331ef72a95"
+    },
+    "pod": {
+      "name": "mynginx",
+      "uid": "538ce55c-05ef-4278-a422-d0fae3d789d3"
+    },
+    "serviceaccount": {
+      "name": "default",
+      "uid": "d262d02a-29a4-4e05-a3d7-6a1720d88b76"
+    },
+    "warnafter": 1763533006
+  },
+  "nbf": 1763529399,
+  "sub": "system:serviceaccount:default:default"
+}
+
+when we deploy kubernetes dashboard  on our system then there we have to authenticate it we generate token and when we have to generate token then
+
+kubectl get ns
+kubectl create ns saiyam
+kubectl get sa -n saiyam
+
+as soon as we create namespace automatically one serviceAccount gets created which is default this is the behaviour that genrally we forget to create one depending on the choices so as soon as we create namespace it shouldn't get fail for them so automatically serviceAccount gets created and assigned or added. so default serviceAccount is added automatically as soon as new namespace is created.
+
+kubectl create sa saiyam
+# this token is valid for one hour
+kubectl create token saiyam
+
+# this command will create token for the given duration
+kubectl create token saiyam --duration =1000h
+
+token by default get generated when we create namespace. we can generate token by ourself . we can create indefinite token through secret via yaml file
+
+
+
+
+Service Account::
+controlplane $ kubectl create ns demo
+controlplane $ kubectl get sa -n demo
+
+controlplane $ kubectl create serviceaccount my-service-account
+serviceaccount/my-service-account created
+controlplane $ kubectl get secrets -o json | jq -r '
+  .items[] |
+  select(
+    .type=="kubernetes.io/service-account-token" and
+    .metadata.annotations."kubernetes.io/service-account.name" == "my-service-account"
+  )'
+
+
+✅ What It Does (Simplified)
+kubectl get secrets -o json: Lists all secrets in the current namespace in JSON format.
+
+jq -r: Processes the JSON using jq (a command-line JSON processor).
+
+.items[]: Iterates over each secret.
+
+select(...): Filters only those secrets that:
+
+Are of type kubernetes.io/service-account-token
+
+Belong to the service account named "my-service-account"
+
+
+
+
+
+
+Kubeconfig file. we created Kubernetes cluster. suppose we are on AWS and on AWS we build EKS cluster after building EKS cluster we get Kubeconfig file and we download Kubeconfig file and this Kubeconfig file is admin file and then we start interacting Cluster.
+General Concept is that we create users and Kubeconfig file for user is generated and distributed so that other users don't come into our namespace and perform operations.
+
+Roles Apply on Kubernetes Objects
+
+First We create A ServiceAccount of user. Then we create either role and RoleBinding or ClusterRole and ClusterRoleBinding. when we talk about namespace level like a user Raj has role in Dev namespace. Role tells what a user raj can do like list,get,watch,delete etc these are the verbs that a user can do which is defined in role specifying these are the roles now ServiceAccount user raj and role needs to bind for that we use RoleBinding and this is also done at namespace level.
+
+ClusterRole is defined for whole cluster which means if verbs like list,get,watch,delete etc are specified for the ServiceAccount user raj and used ClusterRoleBinding to bind them then that user Raj can list or get etc on resources like pod on all the namespaces because this is ClusterRole we defined.
+
+Four things :
+Role
+RoleBinding
+ClusterRole
+ClusterRoleBinding
+
+There are four combinations :
+ClusterRole + RoleBinding (Yes) means we can use ClusterRole with RoleBinding at namespace level
+Role + RoleBinding (Yes) means we can use Role with RoleBinding at namespace level
+ClusterRole + ClusterRoleBinding (Yes) means we can use ClusterRole with ClusterRoleBinding at all namespace level
+Role + ClusterRoleBinding (No) means we cannot use Role with ClusterRoleBinding
+
+
+
+vi sa
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployment-manager
+
+
+kubectl create sa deployment-manager
+
+# defining role to see secrets access with different verbs for our ServiceAccount
+vi role2.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: secret-manager
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+
+
+vi role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: deployment-creator
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+
+# defining rolebinding to bind role2 and ServiceAccount
+vi rb1.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: secret-manager-binding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: deployment-manager
+  namespace: default
+roleRef:
+  kind: Role
+  name: secret-manager
+  apiGroup: rbac.authorization.k8s.io
+
+
+
+vi rb.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: deployment-manager-binding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: deployment-manager
+  namespace: default
+roleRef:
+  kind: Role
+  name: deployment-creator
+  apiGroup: rbac.authorization.k8s.io
+
+
+vi deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      serviceAccountName: deployment-manager
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+
+While defining Role we should specify namespace because role is namespace dependent.while defining role in rules section we specify apiGroups as app for deployment because it is rule. because deployments comes in apps group. we can check it in using command " kubectl api-resources"
+we defining role telling what user can do with the verbs ("create", "delete", "get", "list", "patch", "update", "watch") for apiGroups apps resources deployments meaning we can create deployments or delete deployments etc but only deployments resource not any other resources.
+
+in RoleBinding subjects with kind as ServiceAccount and name of it as deployment-manager at namespace default with role reffered from deployment-creator.
+
+
+kubectl apply -f sa.yaml
+kubectl apply -f role.yaml
+kubectl apply -f rb.yaml
+
+kubectl apply -f role2.yaml
+kubectl apply -f rb1.yaml
+
+kubectl apply -f deploy.yaml
+
+kubectl explain rolebinding.subjects
+kubectl explain rolebinding.subjects.kind
+
+
+
+kubectl explain networkpolicies
+
+in deployment if we don't mention serviceAccountName then by default it takes default serviceAccountName.
+and when we mention deployment takes mentioned serviceAccountName.
+
+# now we are creating pod
+kubectl run mynginx --image=nginx
+
+
+# checking for help for kubectl run command
+kubectl run -h
+
+# copy pod yaml generated and copy it into a.yaml file
+kubectl run demo --image=nginx --dry-run=client -oyaml
+
+# above command copied yaml file with adding serviceAccountName: deployment-manager in spec section of pods yaml file.
+vi a.yaml
+
+
+# if you want to see or check what we can mention
+kubectl explain pod.spec
+
+kubectl apply -f a.yaml
+
+# check all the command to delete all pods from everywhere using for checking --all/-a/-A
+kubectl delete pods --all / kubectl delete pods -A / kubectl delete pods -a
+
+
+# here default is namespace and deployment-manager is serviceaccount
+# this will give error as pod creation is forbidden for ServiceAccount deployment-manager
+kubectl run nginx --image=nginx --as=system:serviceaccount:default:deployment-manager
+
+
+# this command helps us by this way we are asking that can i create deployment with ServiceAccount deployment-manager at default level #namespace. using this command we can know whether we can create deployment or not for ServiceAccount deployment-manager at default level #namespace. response would be either yes or no.
+kubectl auth can-i create deployments --as=system:serviceaccount:default:deployment-manager
+
+
+
+exmaple folder::
+kubectl auth can-i create deployments --as=system:serviceaccount:default:deployment-manager
+OUTPUT : yes
+kubectl auth can-i create secrets --as=system:serviceaccount:default:deployment-manager
+OUTPUT : yes
+kubectl auth can-i list services --as=system:serviceaccount:default:deployment-manager
+OUTPUT : no
+kubectl auth can-i list statefulset --as=system:serviceaccount:default:deployment-manager
+OUTPUT : no
+
+because we explicitly mentioned that only deployment and secret can be accessed like create or delete or watch or list etc and other Kubernetes objects cannot be created or accessed
+
+
+
+
+
+
+
+
+IMPERATIVE WAY :
+RBAC
+Cluster role to create deployment and daemonset
+
+kubectl create ns app
+kubectl create sa demo-sa -n app
+kubectl create clusterrole my-rules --verb=create --resource=deployments --resource=daemonsets -o yaml --dry-run=client > my-rules.yaml
+
+
+
+kubectl create ns dev1
+kubectl create serviceaccount demo2-sa -n dev1
+
+kubectl create role demo2-deployment-creator --verb=create --resource=deployments.apps -n dev1
+
+kubectl create rolebinding demo2-sa-deployment-binder --role=demo2-deployment-creator --serviceaccount=dev1:demo2-sa -n dev1
+
+# checking that creating deployments in specified namespace and serviceAccount will be authenticated
+kubectl auth can-i create deployments --namespace dev1 --as=system:serviceaccount:dev1:demo2-sa
+OUTPUT: Yes
+
+# checking that creating service in specified namespace and serviceAccount will be authenticated
+kubectl auth can-i create service --namespace dev1 --as=system:serviceaccount:dev1:demo2-sa
+OUTPUT: NO
+
+# creating token for the serviceAccount for specified namespace
+kubectl create token demo2-sa -n dev1
+
+# this command will give API-Server Address
+APISERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+
+# will give 403 forbidden :
+curl -k -X POST $APISERVER/api/v1/namespaces/dev1/secrets \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "apiVersion": "v1",
+        "kind": "Secret",
+        "metadata": {
+            "name": "demo-secret"
+        },
+        "data": {
+            "key": "'$SECRET_DATA'"
+} }'
+
+
+# paste the token generated from this command " kubectl create token demo2-sa -n dev1 "
+export TOKEN=<paste the token generated from kubectl create token demo2-sa -n dev1>
+
+
+
+# will give 403 forbidden :
+curl -k -X POST $APISERVER/api/v1/namespaces/dev1/secrets \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "apiVersion": "v1",
+        "kind": "Secret",
+        "metadata": {
+            "name": "demo-secret"
+        },
+        "data": {
+            "key": "'$SECRET_DATA'"
+} }'
+
+
+# will give 403 forbidden :
+curl -k -X POST $APISERVER/api/v1/namespaces/dev1/secrets \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "apiVersion": "v1",
+        "kind": "Deployment",
+        "metadata": {
+            "name": "demo-secret"
+        },
+        "data": {
+            "key": "'$SECRET_DATA'"
+} }'
+
+
+
+
+
+
+
+
+
+Authentication:
+
+kubectl config view
+find the cluster name from the kubeconfig file
+export CLUSTER_NAME=
+
+export APISERVER=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
+curl --cacert /etc/kubernetes/pki/ca.crt $APISERVER/version
+curl --cacert /etc/kubernetes/pki/ca.crt $APISERVER/v1/deployments
+
+The above didn't work and we need to authenticate, so let's use the first client cert. Before that create the client and the key file using "base64 -d" command from kubeconfig file use command "kubectl config view --raw" we will see "client-certificate-data" and "client-key-data"
+
+above you can have the client and the key from the kubeconfig file
+echo "<client-certificate-data_from kubeconfig>" | base64 -d > client
+echo "<client-key-data_from kubeconfig>" | base64 -d > key
+
+curl --cacert /etc/kubernetes/pki/ca.crt --cert client --key key $APISERVER/apis/apps/v1/deployments
+
+curl --cacert /etc/kubernetes/pki/ca.crt --cert client --key key $APISERVER/apis/apps/v1
+
+COMMANDS ::
+controlplane:~$ kubectl config view
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://172.30.1.2:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubernetes-admin
+  name: kubernetes-admin@kubernetes
+current-context: kubernetes-admin@kubernetes
+kind: Config
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate-data: DATA+OMITTED
+    client-key-data: DATA+OMITTED
+controlplane:~$ export CLUSTER_NAME=kubernetes
+controlplane:~$ export APISERVER=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
+
+# we are trying to authenticate through cacert
+controlplane:~$ curl --cacert /etc/kubernetes/pki/ca.crt $APISERVER/version
+{
+  "major": "1",
+  "minor": "34",
+  "emulationMajor": "1",
+  "emulationMinor": "34",
+  "minCompatibilityMajor": "1",
+  "minCompatibilityMinor": "33",
+  "gitVersion": "v1.34.1",
+  "gitCommit": "93248f9ae092f571eb870b7664c534bfc7d00f03",
+  "gitTreeState": "clean",
+  "buildDate": "2025-09-09T19:37:20Z",
+  "goVersion": "go1.24.6",
+  "compiler": "gc",
+  "platform": "linux/amd64"
+
+# when we are trying to list deployment through cacert it gives error because we don't have role
+# this is kubernetes cacert(/etc/kubernetes/pki/ca.crt) but kubernetes cacert will not bring api
+controlplane:~$ curl --cacert /etc/kubernetes/pki/ca.crt $APISERVER/v1/deploymentss
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {},
+  "status": "Failure",
+  "message": "forbidden: User \"system:anonymous\" cannot get path \"/v1/deployments\"",
+  "reason": "Forbidden",
+  "details": {},
+  "code": 403
+}controlplane:~$
+
+
+The above didn't work and we need to authenticate, so let's use the first client cert. Before that create the client and the key file base64 -d from kubeconfig file
+
+
+kubectl config view -h
+
+#
+kubectl config view --raw
+
+
+echo "# client-certificate-data paste from above command kubectl config view --raw" | base64 -d > client
+
+vi client
+<paste the encoded client-certificate-data from above echo command>
+
+echo "# client-key-data paste from above command kubectl config view --raw" | base64 -d > key
+
+vi key
+<paste the encoded client-key-data from above echo command>
+
+# NOW RUN THE COMMAND USING KEY AND CLIENT
+curl --cacert /etc/kubernetes/pki/ca.crt --cert client --key key $APISERVER/apis/apps/v1/deployments
+
+
+
+
+
+
+
+
+
+Now using the sA Token 1.24 onwards you need to create the secret for the SA
+controlplane:~$ TOKEN=$(kubectl create token default)
+controlplane:~$ curl --cacert /etc/kubernetes/pki/ca.crt $APISERVER/apis/apps/v1 --header "Authorization: Bearer $TOKEN"
+{
+  "kind": "APIResourceList",
+  "apiVersion": "v1",
+  "groupVersion": "apps/v1",
+  "resources": [
+    {
+      "name": "controllerrevisions",
+      "singularName": "controllerrevision",
+      "namespaced": true,
+      "kind": "ControllerRevision",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "storageVersionHash": "85nkx63pcBU="
+    },
+    {
+      "name": "daemonsets",
+      "singularName": "daemonset",
+      "namespaced": true,
+      "kind": "DaemonSet",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "shortNames": [
+        "ds"
+      ],
+      "categories": [
+        "all"
+      ],
+      "storageVersionHash": "dd7pWHUlMKQ="
+    },
+    {
+      "name": "daemonsets/status",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "DaemonSet",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "deployments",
+      "singularName": "deployment",
+      "namespaced": true,
+      "kind": "Deployment",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "shortNames": [
+        "deploy"
+      ],
+      "categories": [
+        "all"
+      ],
+      "storageVersionHash": "8aSe+NMegvE="
+    },
+    {
+      "name": "deployments/scale",
+      "singularName": "",
+      "namespaced": true,
+      "group": "autoscaling",
+      "version": "v1",
+      "kind": "Scale",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "deployments/status",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "Deployment",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "replicasets",
+      "singularName": "replicaset",
+      "namespaced": true,
+      "kind": "ReplicaSet",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "shortNames": [
+        "rs"
+      ],
+      "categories": [
+        "all"
+      ],
+      "storageVersionHash": "P1RzHs8/mWQ="
+    },
+    {
+      "name": "replicasets/scale",
+      "singularName": "",
+      "namespaced": true,
+      "group": "autoscaling",
+      "version": "v1",
+      "kind": "Scale",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "replicasets/status",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "ReplicaSet",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "statefulsets",
+      "singularName": "statefulset",
+      "namespaced": true,
+      "kind": "StatefulSet",
+      "verbs": [
+        "create",
+        "delete",
+        "deletecollection",
+        "get",
+        "list",
+        "patch",
+        "update",
+        "watch"
+      ],
+      "shortNames": [
+        "sts"
+      ],
+      "categories": [
+        "all"
+      ],
+      "storageVersionHash": "H+vl74LkKdo="
+    },
+    {
+      "name": "statefulsets/scale",
+      "singularName": "",
+      "namespaced": true,
+      "group": "autoscaling",
+      "version": "v1",
+      "kind": "Scale",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    },
+    {
+      "name": "statefulsets/status",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "StatefulSet",
+      "verbs": [
+        "get",
+        "patch",
+        "update"
+      ]
+    }
+  ]
+}
+
+
+
+
+
+
+
+
+
+
+from inside pod you can use var/run/secrets/kubernetes.io/serviceaccount/token path for the token to call the kubernetes service
+
+controlplane:~$ kubectl run mynginx --image=nginx
+pod/mynginx created
+controlplane:~$ kubectl exec -it mynginx -- bash
+root@mynginx:/# cat /var/run/secrets/kubernetes.io/serviceaccount/token
+eyJhbGciOiJSUzI1NiIsImtpZCI6IlU5cXBiY243UGUxNzNPMUZGRUVwZHlicHY5VHZqUEtaZUZQakdVSlFjbTgifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNzk1MDg1OTY5LCJpYXQiOjE3NjM1NDk5NjksImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwianRpIjoiMTRiYmFiMDktYjQxYi00NzU5LWFlYjEtNTM0YzE2NGIzNjFjIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJkZWZhdWx0Iiwibm9kZSI6eyJuYW1lIjoibm9kZTAxIiwidWlkIjoiNmZiZWQ1NGYtYjc2MS00ZGFhLWIwZTEtY2IzMzFlZjcyYTk1In0sInBvZCI6eyJuYW1lIjoibXluZ2lueCIsInVpZCI6ImY5ODAwNzU0LWJhOGItNGE4NS05NTNlLTBhNDVjMTAzMGI3OCJ9LCJzZXJ2aWNlYWNjb3VudCI6eyJuYW1lIjoiZGVmYXVsdCIsInVpZCI6ImQyNjJkMDJhLTI5YTQtNGUwNS1hM2Q3LTZhMTcyMGQ4OGI3NiJ9LCJ3YXJuYWZ0ZXIiOjE3NjM1NTM1NzZ9LCJuYmYiOjE3NjM1NDk5NjksInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OmRlZmF1bHQifQ.pIUGKmq79bqP0YuO8GR5vss82o8xKAPg_Fxl7ZQIoI4jjTqGChpoozlRFKdUPg1yQRq2joVLiQeje3Hyh_1657-Rh1URmM-ayvcn_8OMqW4uJQs_1G5Fk5-OCVvKQtsbpPHteHW4Q4kc46KjL5_9BWW3j304Vbnf90X_V0KyK_oAZNvlg6LqjfI3foKxgbxxhUpNiyU_-IPw2WoBLvRc5H-3W8CMat3HOm3TvNi3GHeTgtpqHddNs0HaEN7eR9tpgPbthPOflM56QP_1_hFMtYgbdD0mRxEcKx3DXG2kNgWtE2E9DDHqjL-qgPQpMzgUDl8WfcEBGzRoCIJ11cj7Mg
+
+kubectl proxy --port=8080 &s
+curl localhost:8080/apis/apps/v1/deployments
+
+
+
+
+
+
+
+
+
+Valideing admission policy:
+Validating admission policies offer a declarative, in-process alternative to validating admission webhooks.Validating admission policies use the Common Expression Language (CEL) to declare the validation rules of a policy.
+
+EXAMPLE :
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: "demo-policy.example.com"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups:   ["apps"]
+      apiVersions: ["v1"]
+      operations:  ["CREATE", "UPDATE"]
+      resources:   ["deployments"]
+  validations:
+    - expression: "object.spec.replicas <= 5"
+
+spec.validations contains CEL expressions which use the Common Expression Language (CEL) to validate the request. If an expression evaluates to false, the validation check is enforced according to the spec.failurePolicy field.
+
+To configure a validating admission policy for use in a cluster, a binding is required. The following is an example of a ValidatingAdmissionPolicyBinding.:
+
+EXAMPLE ::
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: "demo-binding-test.example.com"
+spec:
+  policyName: "demo-policy.example.com"
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        environment: test
+
+
+When trying to create a deployment with replicas set not satisfying the validation expression, an error will return containing message:
+OUTPUT:
+ValidatingAdmissionPolicy 'demo-policy.example.com' with binding 'demo-binding-test.example.com' denied request: failed expression: object.spec.replicas <= 5
+
+Validation actions
+Each ValidatingAdmissionPolicyBinding must specify one or more validationActions to declare how validations of a policy are enforced.
+
+validationActions are:
+Deny: Validation failure results in a denied request.
+Warn: Validation failure is reported to the request client as a warning.
+Audit: Validation failure is included in the audit event for the API request.
+
+# creating pod
+kubect run mynginx --image=nginx
+
+EXAMPLE:
+vi vapb.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: "demo-policy.example.com"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups:   ["apps"]
+      apiVersions: ["v1"]
+      operations:  ["CREATE", "UPDATE"]
+      resources:   ["deployments"]
+  validations:
+    - expression: "object.spec.replicas <= 5"
+
+---
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: "demo-binding-test.example.com"
+spec:
+  policyName: "demo-policy.example.com"
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        environment: test
+
+
+Label and test ::
+kubectl label ns default environment=test
+kubectl create deploy nginx --image=nginx --replicas=6
+
+
+
+
+
+
+
+
+
+
+
+#creating pod
+kubect run mynginx --image=nginx
+
+
+
+GOAL: THIS DEMOS PURPOSE IS THAT WHEN WE SET VALIDATION THEN HOW IT CHECKS SO THAT3 A's OF Kubernetes AUTHENTICATION, AUTHORIZATION, ADMISSION WE CAN UNDERSTAND THEM
+
+
+
+
+Imagepolicywebhook:
+git clone https://github.com/saiyam1814/imagepolicy.git
+mkdir /etc/kubernetes/demo
+cp -r imagepolicy/ /etc/kubernetes/demo
+cd /etc/kubernetes/demo
+ls
+
+cd imagepolicy/
+mv * ..
+cd ..
+ls
+
+vi admission.json
+{
+  "imagePolicy": {
+     "kubeConfigFile": "/etc/kubernetes/demo/config", # kubeconfig File location mentioned where copied above. config is the below file
+     "allowTTL": 50,
+     "denyTTL": 50,
+     "retryBackoff": 500,
+     "defaultAllow": false
+  }
+}
+
+
+# this config file is custom created or generated
+config :
+apiVersion: v1
+kind: Config
+
+clusters:
+- cluster:
+    certificate-authority: /etc/kubernetes/demo/webhook.pem
+    server: https://service-check:8888/check-image
+  name: check-image
+
+users:
+- name: api-server
+  user:
+    client-certificate: /etc/kubernetes/demo/api-client-cert.pem
+    client-key:  /etc/kubernetes/demo/api-client-key.pem
+
+
+contexts:
+- context:
+    cluster: check-image
+    user: api-server
+  name: check-image
+current-context: check-image
+preferences: {}
+
+
+these can be automatically generated :
+webhook.pem, api-client-cert.pem, api-client-key.pem
+
+
+# BEFORE YOU CHANGE OR MODIFY THIS kube-apiserver.yaml file make a backup of it. and after modifying it wait for sometime to reflect changes
+vi /etc/kubernetes/manifests/kube-apiserver.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    kubeadm.kubernetes.io/kube-apiserver.advertise-address.endpoint: 172.30.1.2:6443
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    - --advertise-address=172.30.1.2
+    - --allow-privileged=true
+    - --authorization-mode=Node,RBAC
+    - --client-ca-file=/etc/kubernetes/pki/ca.crt
+    - --enable-admission-plugins=NodeRestriction
+    - --enable-bootstrap-token-auth=true
+    - --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt
+    - --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt
+    - --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key
+    - --etcd-servers=https://127.0.0.1:2379
+    - --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
+    - --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key
+    - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+    - --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
+    - --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key
+    - --requestheader-allowed-names=front-proxy-client
+    - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+    - --requestheader-extra-headers-prefix=X-Remote-Extra-
+    - --requestheader-group-headers=X-Remote-Group
+    - --requestheader-username-headers=X-Remote-User
+    - --secure-port=6443
+    - --service-account-issuer=https://kubernetes.default.svc.cluster.local
+
+
+# ADD THE BELOW TWO LINES IN "/etc/kubernetes/manifests/kube-apiserver.yaml" ONE IS MODIFIED AND ONE LINE IS ADDED
+- --admission-control-config-file=/etc/kubernetes/demo/admission.json
+- --enable-admission-plugins=NodeRestriction,ImagePolicyWebhook
+
+
+# THEN ADD volumeMounts IN "/etc/kubernetes/manifests/kube-apiserver.yaml"
+# ADD volumes IN "/etc/kubernetes/manifests/kube-apiserver.yaml"
+  volumeMounts:
+  - mountPath: /etc/kubernetes/demo
+    name: admission
+    readOnly: true
+volumes:
+- hostPath:
+    path: /etc/kubernetes/demo
+  name: admission
+
+
+kubectl get pods
+
+# to check   why kube-apiserver.yaml is not running after modifying
+crictl ps -a
+
+
+# CHECK IF IT GIVES ERROR THEN ENQUIRE WHY ?? THROUGH CHATGPT
+# THIS ERROR IS happening AT VALIDATION FAIL. because IT FAILS AT SCHEMA VALIDATION.
+# pod mynginx is forbidden because request is not going and its failing
+kubect run mynginx --image=nginx
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

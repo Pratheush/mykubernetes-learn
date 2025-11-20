@@ -426,9 +426,10 @@ spec:
 
 kubectl apply -f csr.yaml
 
-## APPROVE USING CERTIFICATE BASICALLY KUBECTL CERTIFICATE AUTHORITY
+## APPROVE USING CERTIFICATE BASICALLY KUBECTL CERTIFICATE AUTHORITY saiyam is the name of CertificateSigningRequest in csr.yaml
 kubectl certificate approve saiyam
 
+# Getting crt from jsonpath
 kubectl get csr saiyam -o jsonpath='{.status.certificate}' | base64 --decode > saiyam.crt
 
 ls ::
@@ -440,8 +441,8 @@ NOW WE CREATE ROLE AND ROLE-BINDING :
 ## HERE WE ARE CREATING A NEW ROLE WITH DEFINED OR SPECIFIED ACCESS OR TYPE OF ACCESS
 ## IN ROLE-BINDING WE ARE BINDING A USER WITH THAT NEWLY CREATED ROLE WHICH HAS "get watch list" ACCESS TO POD FOR USER SAIYAM
 
-kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
 metadata:
   namespace: default
   name: pod-reader
@@ -450,8 +451,8 @@ rules:
   resources: ["pods"]
   verbs: ["get","watch","list"]
 ---
-kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
 metadata:
   name: read-pods
   namespace: default
@@ -484,7 +485,7 @@ kubectl apply -f role.yaml
 
 
 # SETUP KUBECONFIG
-### SETTTING UP CREDENTIALS ::: TELLING KUBECONFIG THAT A NEW USER IS THERE AND USE SPECIFIC CLIENT CERTIFICATE AND CLIENT KEY
+### SETTING UP CREDENTIALS ::: TELLING KUBECONFIG THAT A NEW USER IS THERE AND USE SPECIFIC CLIENT CERTIFICATE AND CLIENT KEY
 kubectl config set-credentials saiyam --client-certificate=saiyam.crt --client-key=saiyam.key
 response : User "saiyam" set.
 
@@ -500,10 +501,13 @@ kubectl config get-contexts
 
 kubectl config use-context saiyam-context
 
+kubectl config get-contexts
+
 ##OTHER THAN KUBERNETES-ADMIN YOU WILL SEE THAT A NEW USER IS ADDED THERE FOR WHICH CLIENT-CERTIFICATE AND CLIENT-KEY WILL BE PICKUP FROM SPECIFIC LOCATION AND FILE i.e. /root/saiyam.crt and /root/saiyam.key
 cat ~/.kube/config
+ls ~/.kube/config
 
-
+kubectl get pods.
 
 
 
@@ -524,7 +528,7 @@ kubectl get deploy
 kubectl get nodes --kubeconfig ~/.kube/config
 
 
-## USE THIS COMMAND TO SWITCH BETWEEN MULTIPLE CONTEXTS
+## USE THIS COMMAND TO SWITCH BETWEEN MULTIPLE CONTEXTS WHEN YOU HAVE MULTIPLE USERS
 kubectx (explore the usage of this command and list important usages of this command WITH EXAMPLES)
 
 
@@ -1211,7 +1215,7 @@ curl localhost:8001/apis
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-YAML, POD, POD LIFECYCLE, INIT CONTAINERS, SIDECAR CONTAINERS
+PART 3 YAML, POD, POD LIFECYCLE, INIT CONTAINERS, SIDECAR CONTAINERS
 
 
 ## LISTING NAMESPACE
@@ -1318,7 +1322,7 @@ https://killercoda.com/playgrounds/scenario/kubernetes
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-SIDECAR CONTAINER, QOS, PDB, REQUEST_LIMIT
+PART 4 SIDECAR CONTAINER, QOS, PDB, REQUEST_LIMIT
 
 
 
