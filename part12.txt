@@ -1,7 +1,152 @@
 GITOps USING GITHUB ACTIONS AND ARGOCD
 
+(code is written) > (code build artifact) > (manifest file to deploy application) > (deploying into cluster)
+
+CI (Continuous Integration) 1. code is written
+                            2. Code build artifact
+CD (Continuous Delivery/Deployment)1. manifest file to deploy application
+                                   2. deploying into cluster
 
 
+
+
+GithubActions and ArgoCD
+
+Steps
+1. Create .github/workflows folder
+mkdir -p .github/workflows
+
+2. Create a file build-push-image.yaml
+
+cd .github/workflows
+
+# ASK CHATGPT TO EXPLAIN THIS build-push-image.yaml EXPLAIN EACH AND EVERY STEP IN EASY WAY TO REMEMBER IN FEW LINES
+# every company make their own action which we can use in this with "name" and setup action in "uses"
+# like docker  made action for building the image "docker/setup-buildx-action@v2"
+jinja template
+vi build-push-image.yaml
+# name of the git-hub-actions : we want that when i push into this repository some actions will run
+name: build and push docker image
+on:
+  push
+
+jobs:
+  release-docker:
+    # job - name
+    name: Release docker image
+    # if it is a github even then skip ci
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    # telling where its gonna run
+    runs-on: ubuntu-20.04
+    steps:
+      # checkout my branch means checkout the code
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Get git SHA short
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          # with context specifying where Dockerfile is to build image here Dockerfile is in app folder.
+          context: app/
+          push: true
+          tags: |
+            saiyam911/kubesimplify-demo:latest
+            saiyam911/kubesimplify-demo:sha-${{ env.sha_short }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Generate deploy manifest from Jinja template
+        uses: cuchi/jinja2-action@v1.1.0
+        with:
+          # inside deploy.j2 "image: saiyam911/kubesimplify-demo:{{ image_deploy_tag }}" ..
+          # "image_deploy_tag" this value will come from
+          # template is telling this use deploy.j2  and output will create in deploy.yaml
+          template: app/tmpl/deploy.j2
+          output_file: app/deploy/deploy.yaml
+          strict: true
+          variables: |
+            # getting value of "image_deploy_tag" from evironment variable sha_short from above step
+            image_deploy_tag=sha-${{ env.sha_short }}
+
+      - name: Configure git for the action
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Stash unstaged changes
+        run: git stash --include-untracked
+
+      - name: Pull latest changes from the remote branch
+        run: git pull origin main --rebase
+
+      - name: Apply stashed changes
+        run: git stash pop || echo "No stashed changes to apply"
+
+      - name: Commit deploy manifest on local repo
+        run: |
+          git add app/deploy/deploy.yaml
+          git commit -s -m "[skip ci] Generate deployment manifests"
+
+      - name: Push deploy manifests to remote repo
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+
+3. Create a jinja template app/tmpl/deploy.j2
+4. Create deployment file - /app/deploy/deploy.yaml
+5. Create GitHub Actions secret - DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD Make sure your actions have push access as well. Go to Settings > Secrets and Variables > actions > "add new repository secret" i.e. DOCKER_USERNAME and DOCKER_PASSWORD
+
+git add .
+git commit -s -m "gitops CI(Continuous Integration)"
+git push origin main
+
+
+Have a kubeconfig file (default location is ~/.kube/config).
+
+Install ArgoCd
+
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+kubectl get pods -n argocd
+
+kubectl get crd | grep argo
+
+kubectl get svc -n argocd
+
+# patching the service to use this as LoadBalancer so changing type to LoadBalancer
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
+
+
+# get the argocd-server ip and open it in local browser
+kubectl get svc -n argocd
+
+# getting argocd-server secret to access the ui we opened in browser
+# we will get base64 encoded secret so decrypt it > echo "encoded-secret" | base64 -d. we will get decrypted secret
+# user is admin and use the decrypted password to open ui in browser
+kubectl get secret -n argocd argocd-initial-admin-secret -oyaml
+
+
+# ASK CHATGPT TO CORRECT THIS STATEMENT AND PREPARE A FEW LINER STATEMENT IN BULLETS AND EXPLAIN IN EASY TO UNDERSTAND AND REMEMBER
+what ArgoCD does is it is a tool that deploy in kubernetes and natively meant to solve CD(Continuous Delivery/Deployment) problems
+ 1. like installing kubectl and manifesting and monitoring like application is deployed or not so to not to do these things we can use ArgoCD
+
+ we installed ArgoCD on cluster . create configuration of the application in argocd which we want to deploy so that it will check that specific folder from the repository and if there is any change in there then pull the code and deploy it on cluster. so argocd will closely monitor for change in repository. and make sure that if someone changed cluster then check it and check that desired state of git repository is fixed or not and if there is any change then out of sync go and deploy again what is in the git repository.
 
 
 
