@@ -1,0 +1,837 @@
+
+PROJECT DEPLOYMENT ON KUBERNETES WITH HTTPS
+
+
+export KUBECONFIG=... command sets the path to a specific Kubernetes configuration file, allowing kubectl to connect to the desired cluster. It's used when you're working with multiple clusters or non-default config files.
+
+KUBECONFIG is an environment variable that tells kubectl which configuration file to use.
+By default, kubectl looks for the config file at ~/.kube/config.
+
+If you're managing multiple clusters or using a custom config, you can override this default using export KUBECONFIG=....
+
+# export KUBECONFIG=../config → Sets the config file to a relative path (one directory up from the current working directory).
+export KUBECONFIG=../config
+
+kubectl get nodes
+
+kubectl get pods
+
+
+# export KUBECONFIG=/Users/saiyam/git/config → Sets the config file to an absolute path. Useful when the config is stored in a specific directory.
+export KUBECONFIG=/Users/saiyam/git/config
+
+kubectl get pods
+kubectl get nodes
+
+merge multiple kubeconfig files by setting:
+export KUBECONFIG=~/.kube/config:/path/to/other/config
+Then run:
+kubectl config view --merge --flatten > ~/.kube/merged-config
+
+
+To verify which config is being used:
+echo $KUBECONFIG
+kubectl config current-context
+
+And to reset to the default:
+unset KUBECONFIG
+
+
+vi app.py
+from flask import Flask, render_template, request, redirect, url_for
+import psycopg2
+from psycopg2 import sql, Error
+import os
+
+app = Flask(__name__)
+
+def create_connection():
+    try:
+        connection = psycopg2.connect(
+            user=os.getenv('DB_USERNAME'),
+            password=os.getenv('DB_PASSWORD'),
+            host=os.getenv('DB_HOST'),
+            port=os.getenv('DB_PORT'),
+            database=os.getenv('DB_NAME')
+
+        )
+        return connection
+    except Error as e:
+        print("Error while connecting to PostgreSQL", e)
+        return None
+
+@app.route('/', methods=['GET'])
+def index():
+    connection = create_connection()
+    if connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM goals")
+        goals = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return render_template('index.html', goals=goals)
+    else:
+        return "Error connecting to the PostgreSQL database", 500
+
+@app.route('/add_goal', methods=['POST'])
+def add_goal():
+    goal_name = request.form.get('goal_name')
+    if goal_name:
+        connection = create_connection()
+        if connection:
+            cursor = connection.cursor()
+            cursor.execute("INSERT INTO goals (goal_name) VALUES (%s)", (goal_name,))
+            connection.commit()
+            cursor.close()
+            connection.close()
+    return redirect(url_for('index'))
+
+@app.route('/remove_goal', methods=['POST'])
+def remove_goal():
+    goal_id = request.form.get('goal_id')
+    if goal_id:
+        connection = create_connection()
+        if connection:
+            cursor = connection.cursor()
+            cursor.execute("DELETE FROM goals WHERE id = %s", (goal_id,))
+            connection.commit()
+            cursor.close()
+            connection.close()
+    return redirect(url_for('index'))
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return "OK", 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
+
+
+
+vi requirements.txt
+Flask
+psycopg2-binary
+gunicorn
+
+
+
+
+vi Dockerfile
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the requirements file into the container at /app
+COPY requirements.txt /app/
+
+# Install any dependencies specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application code into the container at /app
+COPY . /app
+
+# Make port 8080 available to the world outside this container
+EXPOSE 8080
+
+# Define environment variable for Flask
+ENV FLASK_APP=app.py
+
+# Run the application using Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+
+
+
+
+
+
+# Create image
+docker build --no-cache --platform=linux/amd64 -t ttl.sh/saiyam/demo:10h .
+
+# pushing docker image to anonymous registry
+docker push ttl.sh/saiyam/demo:10h
+
+vi deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: ttl.sh/saiyam/demo:10h
+        imagePullPolicy: Always
+        env:
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: my-postgresql-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: my-postgresql-credentials
+              key: password
+        - name: DB_HOST
+          value: my-postgresql-rw.default.svc.cluster.local
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: goals_database
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            memory: "350Mi"
+            cpu: "250m"
+          limits:
+            memory: "500Mi"
+            cpu: "500m"
+
+
+CRD: Custom Resource Definition
+There is a Kubernetes baselayer and on which extending kubernetes and provide operators whose functionality is different which we can deploy on Kubernetes and also talk to API-Server and also able to serve and solve different purpose.
+
+
+
+
+kubectl get crd | grep cluster
+
+
+# Install cloudnative PG
+# verify kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
+kubectl apply --server-side -f \
+  https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.27/releases/cnpg-1.27.1.yaml
+
+percona for mysql, mongodb, postgresql
+🔧 Percona Operators
+1. Percona Operator for PostgreSQL
+    * Manages PostgreSQL clusters on Kubernetes.
+    * Supports high availability with primary/standby replication.
+    * Automates backups, scaling, failover, and monitoring.
+    * Comparable to CloudNativePG, but backed by Percona’s tooling ecosystem.
+
+2. Percona Operator for MySQL (Percona XtraDB Cluster)
+    * Provides HA MySQL clusters with synchronous replication.
+
+3. Percona Operator for MongoDB
+    * Manages MongoDB clusters with replica sets and sharding.
+
+
+cloudNativePG CloudNativePG is the Kubernetes operator that covers the full lifecycle of a highly available PostgreSQL database cluster with a primary/standby architecture, using native streaming replication.
+🌐 CloudNativePG
+What it is: A Kubernetes operator specifically for PostgreSQL.
+Lifecycle management: Automates deployment, scaling, failover, backups, and upgrades.
+Architecture: Primary/standby clusters with native streaming replication.
+Focus: PostgreSQL only, tightly integrated with Kubernetes.
+
+
+
+kubectl get crd | grep cluster
+
+
+# Install cloudnative PG
+# verify kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
+kubectl apply --server-side -f \
+  https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.27/releases/cnpg-1.27.1.yaml
+
+# after installing cloudnative PG we can run "kubectl get clusters".
+# clusters were not kubernetes object but now we can run below command. so it won't give error
+kubectl get clusters
+
+
+vi postgres-cluster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: my-postgresql
+  namespace: default
+spec:
+  instances: 3
+  storage:
+    size: 1Gi
+  bootstrap:
+    initdb:
+      database: goals_database
+      owner: goals_user
+      secret:
+        name: my-postgresql-credentials
+
+vi secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-postgresql-credentials
+type: Opaque
+data:
+  password: bmV3X3Bhc3N3b3Jk
+  username: Z29hbHNfdXNlcg==
+
+
+Create secret
+kubectl create secret generic my-postgresql-credentials --from-literal=password='new_password'  --from-literal=username='goals_user'  --dry-run=client -o yaml | kubectl apply -f -
+
+
+create Database cluster
+kubectl apply -f postgres-cluster.yaml
+
+
+kubectl get pods
+
+# in status we can see waiting for the instances to become active
+kubectl get clusters
+
+# when all the pods instances are ready running after running postgres-cluster.yaml
+kubectl get pods
+
+# we can see IN Primary section
+kubectl get clusters
+
+
+# Exec into pod to create table. my-postgresql-1 is from above comman kubectl get clusters Primary section.
+kubectl exec -it my-postgresql-1 -- psql -U postgres -c "ALTER USER goals_user WITH PASSWORD 'new_password';"
+
+# port forward
+kubectl port-forward my-postgresql-1 5432:5432
+
+#above port-forward command is different and this below command is different
+# after port-forwarding run this command using goals_user and goals_database with new_password and create table goals
+PGPASSWORD='new_password' psql -h 127.0.0.1 -U goals_user -d goals_database -c "
+
+CREATE TABLE goals (
+    id SERIAL PRIMARY KEY,
+    goal_name VARCHAR(255) NOT NULL
+);
+"
+
+
+# this command will give my-postgresql-rw as same as in deploy.yaml in env>name(DB_HOST)>value my-postgresql-rw.default.svc.cluster.local
+kubectl get svc
+
+
+kubectl apply -f deploy.yaml
+
+kubectl get pods
+
+kubectl port-forward my-app-dbd874896-ghjx9 8080:8080
+
+
+open in our browser checks localhost:8080
+
+
+vi service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+spec:
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+
+
+kubectl apply -f service.yaml
+
+
+kubectl get svc
+
+
+vi ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: production-app
+
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: demo.kubesimplify.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-app-service
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - demo.kubesimplify.com
+    secretName: app
+
+
+when we have to configure https then we have to give tls section in ingress.yaml
+
+# Install nginx ingress controller
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/cloud/deploy.yaml
+
+# updated nginx ingress controller
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.14.0/deploy/static/provider/cloud/deploy.yaml
+
+
+# Install CERT MANAGER
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.1/cert-manager.yaml
+
+# do not run yet. run after few below commands
+#kubectl apply -f ingress.yaml
+
+kubectl get pods -A
+
+kubectl get svc -A
+
+adding  ingress-controller(LoadBalancer) adding its ip to google domain. buy the domain then add the ip in DNS
+
+in ingress inside host section we cannot give ip. if you are doing local-testing then we can use wildcard-domains
+ip.nip.io || ip.xip.io
+for demo if we don't have domain then we can add <ingress-controller-LoadBalancer-ip>.xip.io
+
+# TRY BOTH BELOW SEE IF XIP WORKS OR NIP WORKS FOR YOU
+ping demo.<ingress-controller-LoadBalancer-ip>.xip.io
+ping demo.<ingress-controller-LoadBalancer-ip>.nip.io
+
+
+FOR PRODUCTION : when we have to server from proper url then:
+1. WE HAVE TO CREATE A RECORD
+2. ADD DNS WITH ingress-controller-LoadBalancer-ip
+
+kubectl get ing
+
+
+kubectl delete -f ingress.yaml
+
+# no certificate yet
+kubectl get certificate
+
+
+
+# this crd comes or works in local because when i install CERT MANAGER above crd started working.
+# checking for clusteissuers which was used in ingress in annotations section
+# checking if clusteissuers is available
+kubectl get crd
+
+
+vi cluster_issuer.yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: production-app
+spec:
+  acme:
+    # The ACME server URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email address used for ACME registration
+    email: demo@v1.com
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: app
+    # Enable the HTTP-01 challenge provider
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+
+kubectl apply -f cluster_issuer.yaml
+
+
+vi certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: app
+spec:
+  secretName: app
+  issuerRef:
+    name: production-app
+    kind: ClusterIssuer
+  commonName: demo.kubesimplify.com
+  dnsNames:
+  - demo.kubesimplify.com
+
+
+
+kubectl apply -f certificate.yaml
+
+# if you see False in READY section in below command then there is something missing or some issue
+kubectl get certificate
+
+
+# for DEBUG Certificate ISSUE
+# if FALSE IN READY then CHEck Status in yaml file
+kubectl get certificate -oyaml
+
+# for DEBUG Certificate ISSUE
+kubectl get challenges
+
+# for DEBUG Certificate ISSUE
+# check status here also
+kubectl get clusterissuer -oyaml
+
+
+kubectl get certificate
+
+kubectl get secret
+
+kubectl apply -f ingress.yaml
+
+kubectl get ing
+
+# this pv is created by postgres-controller this behavior which is done by controller custom by cloudNativePG
+kubectl get pv
+
+# this pv is created by postgres-controller this behavior which is done by controller custom by cloudNativePG
+kubectl get pvc
+
+
+
+In KUBERNETES THERE ARE THREE TYPES OF AUTO-SCALERS:
+1. Cluster Autoscaler - a component that automatically adjusts the size of a Kubernetes Cluster so that all pods have a place to run and there are no unneeded nodes.
+2. Vertical Pod Autoscaler - a set of components that automatically adjust the amount of CPU and memory requested by pods running in the Kubernetes Cluster.
+3. HorizontalPodAutoscaler (Native Kubernetes Object)
+
+
+
+vi hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+spec:
+  # selecting deployment of my-app
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  # setting up minimum and maximum replicas for our my-app
+  minReplicas: 1
+  maxReplicas: 10
+  # watching metrics of type Resource cpu if averageUtilization of cpu croses 20% then increase pod replicas between 1 and 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 20
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: AverageValue
+        averageValue: 350Mi
+
+
+# Install Metrics server
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+kubectl apply -f hpa.yaml
+
+
+winget install k6
+
+# to confirm k6 is installed correctly.
+# k6 scripts are written in JavaScript, making them easy to integrate into CI/CD pipelines.
+k6 version
+
+
+# take BASE_URL: https://demo.kubesimplify.com for 100 users for 30 seconds continuously recurring the hit at the endpoint
+vi load.js
+import http from "k6/http";
+import { check } from "k6";
+
+
+export const options = {
+  vus: 100,
+  duration: '30s',
+};
+
+const BASE_URL = 'https://demo.kubesimplify.com'
+
+function demo() {
+  const url = `${BASE_URL}`;
+
+
+  let resp = http.get(url);
+
+  check(resp, {
+    'endpoint was successful': (resp) => {
+      if (resp.status === 200) {
+        console.log(`PASS! url`)
+        return true
+      } else {
+        console.error(`FAIL! status-code: ${resp.status}`)
+        return false
+      }
+    }
+  });
+}
+
+
+export default function () {
+    demo()
+}
+
+
+
+
+# setting up watch on pods
+kubectl get pods -w
+
+
+k6 run load.js
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,6 +1,305 @@
 KUBERNETES VOLUMES
 
 
+Containers are ephmeral in nature meaning when container dies then data in the container is destroyed. that's why it is said that containers are best suited for stateless application.
+
+Imagine:
+USECASE 1:
+if you are performing operation which will change the data in the container then there we need to persist the data of the container as failsafe or back incase of container restarts or dies this way data will not be lost if data is persisted like statefulset.
+USECASE 2:
+when we were learning inti-container,sidecar-container or multi-container concept then the pod which has multiple containers then inside filesystem one is reading from the filesystem and other-one is writing into the filesystem such system is called shared filesystem . shared filesystem between containers in a pod cannot be made as standardly
+
+So solution for such problem is VOLUMES.
+KUBERNETES VOLUMES is a way to store data. KUBERNETES VOLUMES is like directory with data and any number of VOLUMES can be attached to the pod and any type of VOLUMES, data is preserved across container restarts not pod restarts.
+
+now KUBERNETES VOLUMES is done through CSI meaning external storage drivers of different companies which implements like for aws it is different like  longhorn, portworks or localpath provisioners etc these made their own storage drivers which implements CSI(Container Storage Interface). storage driver is outside of KUBERNETES and we install into KUBERNETES this way codebase of KUBERNETES becomes light
+1. ConfigMap as VOLUME
+2. Secret as Volume
+3. EmptyDir is empty directory which is useful in cases like multi-container pod(ask chatgpt for one or two usecase or examples)
+4. hostpath : when particular directory of host we need there we use hostpath
+5. iscsi (they are remote)
+6. localpath
+7. nfs (they are remote)
+
+PersistentVolume
+PersistentVolumeClaim
+StorageClass
+VolumeAttributeClasses
+
+
+we can categorize KUBERNETES Volumes
+1. Remote Storage : (They are used in Production)
+ClusterFS, NFS, Cloud Volumes
+suppose we have cluster in AWS like EKS or GKE they have their own CSI driver which we will find through storageClass when we create pvc(PersistentVolumeClaim) it will create pv(PersistentVolume) which is actually backed by remote-storage which is at GCP or AWS or any CloudProvider. This Remote-Storage is outside of KUBERNETES cluster so lifecycle of pvc is different from lifecycle of pod. since it is outside of KUBERNETES cluster it is safe option in case of disaster-recovery can be fast or data-loss can be protected etc so in production for stateful application to maintain state or maintain databases when we need to use volumes then we use Remote-Storage.
+NFS is a popular thing clusterFSP we can take virtual machine and we can install nfs in vm and there we can expose a directory and that directory can be used in pvc
+
+EPHEMERAL-STORAGE:(Temporary Type)
+1. EmptyDir
+2. CSI Ephemeral Volume
+
+EmptyDir is Temporary storage
+Suppose there is a pod and when it is assigned to Node and if we used EmptyDir in pod's yaml file for creation as volume then as soon as pod is created and assigned to Node EmptyDir volume is created but as soon as pod is removed or destroyed EmptyDir also gets removed but inside pod if container restarts then there is no problem since EmptyDir is Temporary but EmptyDir follows pod lifecycle not container lifecycle.
+EmptyDir usecases :
+1. Data Persist till Pod Persists
+2. Scratch Space like temp files logs, cache (reading writing will be faster)
+3. Inter container communication ( sharing space between containers like files can be shared easily)
+
+
+
+vi mypod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emptydir-pod
+spec:
+  containers:
+    - name: busybox
+      image: busybox
+      command: ['sh', '-c', 'echo "Writing data to /data/emptydir-volume..."; echo "Hello from Kubesimplify" > /data/emptydir-volume/hello.txt; sleep 3600']
+      volumeMounts:
+        - name: temp-storage
+          mountPath: /data/emptydir-volume
+  volumes:
+    - name: temp-storage
+      emptyDir: {} #storage on the node. if we use memoryram then it will use ram for storage instead of diskspace
+
+
+#storage on the node.meaning whichever it is running on virtual-machine on that node it uses its storage
+emptyDir: {} #storage on the node. if we use medium:Memory then it will use ram for storage instead of diskspace
+
+Temporary volumes that lives tills the lifespan of a pod.
+This pod created a container busyboz and creates emptyDir, mounts it inside the pod under /data/emptydir-volume and data is getting inserted from the pod with the shell script into hello.txt to the mounted location.
+
+
+kubectl apply -f mypod.yaml
+kubectl get pods
+kubectl exec -it emptydir-pod -- bash
+
+ls
+ls //data/emptydir-volume
+output: hello.txt
+cat /data/emptydir-volume/hello.txt
+exit
+
+kubectl delete pod --all
+
+
+# here we mentioned emptyDir with medium: Memory with sizeLimit i.e. ram memory size limit of 512Mi
+vi emptyDir2.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emptydir-pod
+spec:
+  containers:
+    - name: busybox
+      image: busybox
+      command: ['sh', '-c', 'echo "Writing data to /data/emptydir-volume..."; sleep 3600']
+      volumeMounts:
+        - name: temp-storage
+          mountPath: /data/emptydir-volume
+  volumes:
+    - name: temp-storage
+      emptyDir:
+        medium: Memory
+        sizeLimit: 512Mi
+
+kubectl apply -f emptyDir2.yaml
+
+
+
+
+
+
+hostpath: mounts host directory inside container
+usecases of hostpath:
+1. Access to Docker Internal : accessing resources from the host
+2. check existing files/directories    : before running checks for files or directories when pod restarts so pod restart is also safe
+
+like in init container we can mount host file and check for existing files and directories.
+
+in hostpath we are directly mounting the host volume inside the container so this is safe from pod restarts.
+
+# ASK CHATGPT FOR THE BELOW STATEMENT THAT IF IT IS CORRECT OR NOT AND IF NOT MAKE CORRECTION
+path is specified in hostpath and type is specified in path of hostpath.
+1. if it is empty then there is no need of check
+2. DirectoryOrCreat : if we write DirectoryOrCreat then create if does not exist.
+3. Directory : if only Directory is mentioned then Directory must exist otherwise pod will not be created.
+4. FileOrCreate : similarly if file exist then okey if file is not there then it will create
+5. File : If we mention File in type then if file exist then okey but if file does not exist then pod will not be created
+6. Socket: unix socket must mentioned or exist
+7. charDevice
+8. BlockDevice
+
+
+
+vi hostpath.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-pod
+spec:
+  containers:
+    - name: busybox
+      image: busybox
+      command: ['sh', '-c', 'echo "Writing data to /data/hostpath-volume..."; echo "Hello from Kubesimplify" > /data/hostpath-volume/hello.txt; sleep 3600']
+      volumeMounts:
+        - name: host-storage
+          mountPath: /data/hostpath-volume  # mount host directory to the container to the given location.
+  volumes:
+    - name: host-storage
+      hostPath:
+        path: /tmp/hostpath  # this directory is in host
+        type: DirectoryOrCreate # if directory hostpath does not exist in host then create otherwise okey.
+
+
+kubectl apply -f hostPath.yaml
+kubectl get pods
+
+# to find pod on which node is running
+kubectl get pods -owide
+
+#if it is on node01 then login to node01
+ssh node01
+
+# checking the hostpath directory created or not and check if file hello.txt exist or not. created by pod at start
+ls /tmp/hostpath
+
+cat /tmp/hostpath/hello.txt
+
+kubectl delete pod --all --force
+
+# NOW CHECK EVEN IF POD IS DELETED DATA EXISTS OR NOT
+cd /tmp/hostpath
+ls
+cat hello.txt
+
+
+
+
+
+
+
+Remote-Storage : External Storage like CLusterFS, NFS
+
+
+
+
+
+
+PV(PersistentVolume) it means persisting data.
+PVC (PersistentVolumeClaim)
+PV and PVC lifecycle is independent of POD lifecycle.
+
+PV : Actual Storage abstraction
+- static Provisioning(when we manually create PersistentVolume) > The storage Storage class
+- Dynamic Provisioning(when we install a storage class that storage class automatically according to software provision volume) > with storage class. we have lots of storageClasses
+
+for example :
+we deploy EKS cluster of aws and when we run "kubectl get sc" then we get storageClasses which are backed by amazon storage. whichever cloud provider we choose we get their csi driver installed and StorageClass so that when we create PVC automatically it will create PV so this is called Dynamic Provisioning
+
+In Static Provisioning first we create PV then we create PVC  and bounds it
+In Dynamic Provisioning we create PVC and PV creates automatically then bounds
+
+
+
+for example:
+S3 Bucket, EVS Volume, Possible  of Disk in GCP or possible nfs server running on Ubuntu instance
+
+
+there are some policies which we call Reclaim Policy
+Retain Manual Reclaim
+Recycle basic scrub means (Temporary storage) (Usually not used its for temp storage)
+Delete Delete the volume
+
+when we delete PVC then PV remains and data is preserved
+
+vi dynamic-provisioning.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  ports:
+  - port: 3306
+    name: mysql
+  clusterIP: None
+  selector:
+    app: mysql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  serviceName: mysql
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+          name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "password"
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-persistent-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]  # explain this CHATGPT
+      storageClassName: "local-path"    # explain this CHATGPT
+      resources:
+        requests:
+          storage: 10Gi   # assigning 10Gb Local storage
+
+
+# this is good for demo purposes
+local-path-provisioner : Dynamically provisioning persistent local storage with Kubernetes
+
+Local Path Provisioner provides a way for the Kubernetes users to utilize the local storage in each node. Based on the user configuration, the Local Path Provisioner will create either hostPath or local based persistent volume on the node automatically.
+
+
+longhorn: Cloud-Native distributed storage built on and for Kubernetes
+Longhorn is cloud-native storage built using Kubernetes and container primitives.
+install Longhorn on an existing Kubernetes cluster with one kubectl apply command or by using Helm charts. Once Longhorn is installed, it adds persistent volume support to the Kubernetes cluster.
+
+kubectl get sc
+
+some fields are necessary and if we don't mention it then it automatically choose default values
+
+kubectl get sc
+
+kubectl get pv
+
+kubectl get pvc
+
+
+kubectl apply -f dynamic-provisioning.yaml
+
+kubectl get sc
+
+kubectl get pv
+
+kubectl get pvc
+
+
+we will see a storageClass is created and its status is bound which is clamed by default/mysql-persistent-storage-mysql-0 since it is a statefulset map 3 replicas first one pv is create and one pvc with ReadWriteOnce is bound and then one pod runs then next pv will be created and next pvc with ReadWriteOnce is bound and then next pod runs then
+next pv will create and then next pvc is bound with reading and next pod runs since replicas is set 3 so 3 pv and 3 pvc and 3 pods will created with pv created with Reclaim policy delete means when pvc is deleted pv also deletes.
+since statefulset creates and removes in order.
+
+In Dynamic-provisioning we did not create PV so when PV is automatically created then we call it dynamic-Provisioning
 
 
 
@@ -9,6 +308,154 @@ KUBERNETES VOLUMES
 
 
 
+ EXAMPLE Remote-Storage : External Storage like GLusterFS, NFS:::
+GLusterFS, NFS (NETWORK FILE SYSTEM ) acts a REMOTE-STORAGE :
+
+ANOTHER EXAMPLE of NFS ::
+git clone https://github.com/saiyam1814/Kubernetes-hindi-bootcamp.git
+cd nfs/
+
+ssh node01
+
+#first installing nfs server
+NFS server install on node01 of Killercoda or any public instance
+sudo apt update
+sudo apt install -y nfs-kernel-server
+
+
+Export directory
+# -p flag tells while creating directory if parent directory is missing then create parent directory automatically
+sudo mkdir -p /srv/nfs/kubedata
+
+# this chown nobody:nogroup is common convention for shared directories
+sudo chown nobody:nogroup /srv/nfs/kubedata
+
+# giving permission to the directory
+sudo chmod 777 /srv/nfs/kubedata
+
+
+Configuring export
+# writing to /etc/exports. * means to allow all the clients read, write access sync on the disc . no checking on subtree and client can act as root on the server. and doing means writing all of it into /etc/exports.
+echo "/srv/nfs/kubedata *(rw,sync,no_subtree_check,no_root_squash)" | sudo tee -a /etc/exports
+
+
+Exporting the share.
+# before restarting configuring all the exports making it available
+sudo exportfs -rav
+
+
+# Start the sever
+sudo systemctl restart nfs-kernel-server
+
+
+vi pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv
+spec:
+  capacity:
+    storage: 1Gi  # creating persistent-volume of 1gb
+  accessModes:
+    - ReadWriteMany  # giving access read and write many times as much as we want or required
+  nfs:                # telling type of persistent-volume here it is nfs
+    path: /srv/nfs/kubedata   # /srv/nfs/kubedata this is the location we configured in nfs
+    server: <NFS_SERVER_IP>(node Internal-IP/ if we are doing on public instance then we have to give public ip)
+  persistentVolumeReclaimPolicy: Retain
+
+
+vi pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+
+
+vi pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-pod
+spec:
+  containers:
+    - name: busybox
+      image: busybox
+      command: ['sh', '-c', 'echo "Hello from NFS PV of Kubesimplify" > /mnt/data/hello.txt; sleep 3600']
+      volumeMounts:
+        - name: nfs-storage  # mounted volume name
+          mountPath: /mnt/data    # mount volume to this location inside container
+  volumes:
+    - name: nfs-storage  # name of this volume to be mounted
+      persistentVolumeClaim:
+        claimName: nfs-pvc  # persistentVolumeClaim name is from above PVC
+
+
+# checking the ip of the nodes
+kubectl get nodes -owide
+
+kubectl create -f pv.yaml
+
+# observe nfs-pv is created and its status is available to bound. once we run pvc then pv status will change to bound
+kubectl get pv
+
+
+kubectl apply -f pvc.yaml
+
+kubectl get pvc
+
+kubectl delete sc local-path
+
+kubectl delete pods --all --force
+
+kubectl delete statefulset --all --force
+
+kubectl delete pvc --all --force
+
+kubectl delete pv --all --force
+
+
+kubectl create -f pv.yaml
+
+kubectl get pv
+
+kubectl create -f pvc.yaml
+
+kubectl get pv
+
+kubectl get pvc
+
+kubectl apply -f pod.yaml
+
+kubectl get pods
+
+
+ssh node01
+
+cd /srv/nfs/kubedata
+
+ls
+
+cat hello.txt
+
+this is how we create a pool of clusterFS or NFS and then we use like this as Remote-Storage.
+
+Different Modes:
+ReadWriteMany : generally when we have to do multiple read writes then we setup PV and PVC like that
+ReadWriteOnce
+ReadOnlyMany
+
+NFS Ganesha Server and External Provisioner is also NFS. it has S3 compatibility. S3 can also be used as one of persisten layers
+
+S3 Kubernetes CSI
+Cloud Native Distributed Storage in Kubernetes with Longhorn
+
+pod will not create until volume not create or available?? from above example ask CHATGPT
 
 
 
@@ -16,12 +463,107 @@ KUBERNETES VOLUMES
 
 
 
+LOCAL-VOLUME :
+Local-Volume is used where we need to use Specific Hardware and we need high performance. Local-Volume is helpful where data needs to be close
+
+Local-Path-Provisioner also uses Local-Volume.Local Path Provisioner will create either hostPath or local based persistent volume on the node automatically CHECK THIS WITH CHATGPT
+
+vi pv.yaml:
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: demo-pv
+  labels:
+    type: local
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/opt/data"
+
+vi pvc.yaml:
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo-pvclaim
+spec:
+  storageClassName: local-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+
+
+vi sc.yaml:
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage
+provisioner: kubernetes.io/no-provisioner  # here we are using no provisioner
+volumeBindingMode: WaitForFirstConsumer
+
+vi pod.yaml:
+apiVersion: v1
+kind: Pod
+metadata:
+  name: task-pv-pod
+spec:
+  volumes:
+    - name: pv-vol
+      persistentVolumeClaim:
+        claimName: demo-pvclaim
+  containers:
+    - name: pv-pod
+      image: nginx
+      ports:
+        - containerPort: 80
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: pv-vol
+
+
+FIRST WE WILL CREATE Storage-Class THEN PV AND PVC AND THEN POD
+
+kubectl apply -f sc.yaml
+
+# we will see local-storage name of storage-class is in WaitForFirstConsumer of VOLUMEBINDINGMODE which means until pod is created  means until demand comes it will not bound.(CHECK CHATGPT THAT HERE it IS STORAGE-CLASS OR PV OR PVC) means volume will not create until pod is created
+kubectl get sc
+
+kubectl apply -f pv.yaml
+
+# check if pv is available in status
+kubectl get pv
+
+kubectl apply -f pvc.yaml
+
+# here you will see STATUS as pending since pod is not created so volume is not bound until demand is not there
+kubectl get pvc
+
+kubectl apply -f pod.yaml
+
+kubectl get pods
+
+# check if pv is bound in status
+kubectl get pv
+
+# check STATUS here it says bound because pod is created and demand is there so volume is created and status is in Bound from Pending
+kubectl get pvc
+
+kubectl get sc
 
 
 
+Until Volume is not mounted POD will not come up.
 
 
-
+# CHECK CHATGPT
+types of VOLUMEBINDINGMODE
+1. WaitForFirstConsumer
+2. Immediately as soon as PV is created it automatically bounds
 
 
 
