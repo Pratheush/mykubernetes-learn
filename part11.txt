@@ -14,7 +14,9 @@ export KUBECONFIG=../config
 
 kubectl get nodes
 
-kubectl get pods
+# checks metrics-server is installed, kubeproxy, coredns, coredns-autoscaler, ama-metrics,
+#check in my case
+kubectl get pods -A
 
 
 # export KUBECONFIG=/Users/saiyam/git/config → Sets the config file to an absolute path. Useful when the config is stored in a specific directory.
@@ -514,7 +516,7 @@ kubectl get pvc
 In KUBERNETES THERE ARE THREE TYPES OF AUTO-SCALERS:
 1. Cluster Autoscaler - a component that automatically adjusts the size of a Kubernetes Cluster so that all pods have a place to run and there are no unneeded nodes.
 2. Vertical Pod Autoscaler - a set of components that automatically adjust the amount of CPU and memory requested by pods running in the Kubernetes Cluster.
-3. HorizontalPodAutoscaler (Native Kubernetes Object)
+3. Horizontal Pod Autoscaler (Native Kubernetes Object)
 
 
 
